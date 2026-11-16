@@ -1,0 +1,6 @@
+# 원본 데이터 (Kaggle에서 직접 내려받기)
+data/
+*.zip
+.DS_Store
+__pycache__/
+.ipynb_checkpoints/
