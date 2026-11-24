@@ -16,9 +16,10 @@ import time
 import urllib.request
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
-FALLBACK_MODEL = "gemini-2.5-flash"                                 # 기본 모델이 계속 응답하지 않을 때
-# 시도 계획: (모델, 시도 전 대기 초). 503(서버 혼잡)·429(요청 한도)는 잠시 뒤 다시 시도하면 대부분 해결됨
-ATTEMPTS = [(MODEL, 0), (MODEL, 20), (FALLBACK_MODEL, 20)]
+FALLBACK_MODEL = "gemini-3.1-flash-lite"                            # 가볍고 빠른 무료 모델 (기본 모델이 느리거나 혼잡할 때)
+TIMEOUT = 120                                                       # 응답 대기 최대 시간(초)
+# 시도 계획: (모델, 시도 전 대기 초). 503(서버 혼잡)·시간 초과는 잠시 뒤 다시 시도하거나 가벼운 모델로 바꾸면 대부분 해결됨
+ATTEMPTS = [(MODEL, 0), (FALLBACK_MODEL, 10), (MODEL, 30)]
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 BANNED = ["때문", "원인", "탓", "인해", "덕분", "초래", "야기"]      # 인과 단정 표현
 BANNED_TERMS = ["GMV", "gmv", "AOV", "aov"]                          # 한눈에 안 들어오는 약어 (거래액, 객단가로 표기)
@@ -64,7 +65,7 @@ def build_prompt(payload):
 JSON 하나만 출력한다: {{"headline": "...", "details": ["...", "..."]}}"""
 
 
-def call_gemini(prompt, api_key, model=MODEL, timeout=60):
+def call_gemini(prompt, api_key, model=MODEL, timeout=TIMEOUT):
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
