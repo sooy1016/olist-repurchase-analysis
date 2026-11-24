@@ -1,109 +1,113 @@
 {
-  "month": "2017-11",
+  "month": "2017-12",
   "metrics": {
     "repurchase": {
       "name": "첫 구매 고객 재구매율",
-      "value_pct": 0.66,
-      "prev_pct": 0.78,
-      "change_pp": -0.12,
+      "value_pct": 0.97,
+      "prev_pct": 0.67,
+      "change_pp": 0.3,
       "normal_range_pct": [
-        0.33,
-        0.86
+        0.35,
+        0.88
       ],
       "status": "정상",
-      "position": "범위 안"
+      "position": "범위보다 높음"
     },
     "late": {
       "name": "예상일 초과 도착 비율",
-      "value_pct": 4.05,
-      "prev_pct": 4.07,
-      "change_pp": -0.02,
+      "value_pct": 8.76,
+      "prev_pct": 4.05,
+      "change_pp": 4.71,
       "normal_range_pct": [
-        1.42,
-        5.46
+        1.7,
+        4.89
       ],
-      "status": "정상",
-      "position": "범위 안"
+      "status": "주의",
+      "position": "범위보다 높음"
     },
     "low_review": {
       "name": "1~2점 리뷰 비율",
-      "value_pct": 10.97,
-      "prev_pct": 10.51,
-      "change_pp": 0.46,
+      "value_pct": 13.99,
+      "prev_pct": 10.97,
+      "change_pp": 3.02,
       "normal_range_pct": [
-        8.62,
-        11.95
+        9.07,
+        11.22
       ],
-      "status": "정상",
-      "position": "범위 안"
+      "status": "주의",
+      "position": "범위보다 높음"
     }
   },
   "repurchase_detail": {
-    "cohort": "2017-10",
-    "customers": 4101,
-    "southeast_pct": 0.65,
-    "southeast_prev_pct": 0.63
+    "cohort": "2017-11",
+    "customers": 4518,
+    "southeast_pct": 1.0,
+    "southeast_prev_pct": 0.69
   },
-  "late_change_total_pp": -0.02,
+  "late_change_total_pp": 4.71,
   "late_change_by_state": [
     {
-      "state": "BA",
-      "region": "북동부",
-      "orders": 152,
-      "rate": 10.5,
-      "rate_prev": 16.0,
-      "contribution_pp": -0.3
+      "state": "RJ",
+      "region": "남동부",
+      "orders": 875,
+      "rate": 19.9,
+      "rate_prev": 6.5,
+      "contribution_pp": 1.56
     },
     {
-      "state": "PE",
-      "region": "북동부",
-      "orders": 83,
-      "rate": 3.6,
-      "rate_prev": 10.5,
-      "contribution_pp": -0.11
-    },
-    {
-      "state": "DF",
-      "region": "중서부",
-      "orders": 104,
-      "rate": 2.9,
-      "rate_prev": 7.7,
-      "contribution_pp": -0.09
-    },
-    {
-      "state": "RS",
-      "region": "남부",
-      "orders": 248,
-      "rate": 2.0,
-      "rate_prev": 2.6,
-      "contribution_pp": -0.05
+      "state": "SP",
+      "region": "남동부",
+      "orders": 3075,
+      "rate": 5.4,
+      "rate_prev": 3.2,
+      "contribution_pp": 0.92
     },
     {
       "state": "MG",
       "region": "남동부",
-      "orders": 511,
-      "rate": 0.8,
-      "rate_prev": 0.9,
-      "contribution_pp": -0.03
+      "orders": 1003,
+      "rate": 5.8,
+      "rate_prev": 0.8,
+      "contribution_pp": 0.72
+    },
+    {
+      "state": "ES",
+      "region": "남동부",
+      "orders": 149,
+      "rate": 18.8,
+      "rate_prev": 4.9,
+      "contribution_pp": 0.28
+    },
+    {
+      "state": "CE",
+      "region": "북동부",
+      "orders": 94,
+      "rate": 21.3,
+      "rate_prev": 1.8,
+      "contribution_pp": 0.26
     }
   ],
   "orders": {
-    "value": 7543,
-    "prev": 4631,
-    "change_pct": 62.9
+    "name": "주문 수",
+    "value": 5673,
+    "prev": 7543,
+    "change_pct": -24.8
   },
-  "gmv_10k_brl": {
-    "value": 100.4,
-    "prev": 66.0,
-    "change_pct": 52.0
+  "sales": {
+    "name": "거래액 (만 헤알)",
+    "value": 74.2,
+    "prev": 100.4,
+    "change_pct": -26.1
   },
   "comment": {
-    "headline": "2017년 11월 주요 지표 모두 정상 범위 유지 및 주문량·GMV 성장 달성함",
+    "headline": "주의: 예상일 초과 도착 비율 평소 범위 초과 (8.8%), 1~2점 리뷰 비율 평소 범위 초과 (14.0%)",
     "details": [
-      "주문 건수 7543건(전월 대비 62.9% 증가) 및 GMV 100.4(전월 대비 52.0% 증가)가 성장한 가운데 첫 구매 고객 재구매율(0.66%), 예상일 초과 도착 비율(4.05%), 1~2점 리뷰 비율(10.97%) 모두 평소 범위 안에서 정상 상태를 유지함.",
-      "전체 예상일 초과 도착 비율 변화(-0.02%p)는 BA주(-0.3%p 기여), PE주(-0.11%p 기여), DF주(-0.09%p 기여) 등 지역별 개선 흐름과 관련하여 나타남.",
-      "과거 분석상 배송 지연 및 1~2점 리뷰 발생 시 재구매율 저하가 함께 나타나는 경향이 관측되었으나, 현재 주요 지표는 정상 범주 내 유지 중임."
+      "첫 구매 고객 재구매율 0.97% (전월 0.67%), 평소 범위 0.35~0.88% · 범위보다 높음",
+      "예상일 초과 도착 비율 8.76% (전월 4.05%), 평소 범위 1.70~4.89% · 범위보다 높음",
+      "1~2점 리뷰 비율 13.99% (전월 10.97%), 평소 범위 9.07~11.22% · 범위보다 높음",
+      "예상일 초과 도착 비율 전월 대비 +4.71%p, 가장 큰 기여는 RJ(남동부) +1.56%p",
+      "예상일 초과 도착은 1~2점 리뷰 증가·낮은 재구매율과 관련 → 다음 달 재구매율 확인 필요"
     ],
-    "source": "AI 요약 · 수치 검증 완료 (gemini-3.5-flash)"
+    "source": "규칙 기반 요약"
   }
 }
