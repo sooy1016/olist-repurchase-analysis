@@ -25,7 +25,7 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: 저장소 내려받기
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 파이썬 설치
         uses: actions/setup-python@v5
@@ -46,16 +46,17 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add dashboard/
           git commit -m "대시보드 자동 갱신: 기준월 $(python -c "import json;print(json.load(open('dashboard/state.json'))['current_month'])")" || echo "변경 없음"
+          git pull --rebase
           git push
 
       - name: Pages 설정
         uses: actions/configure-pages@v5
 
       - name: 게시할 파일 올리기
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: dashboard
 
       - name: GitHub Pages 게시
         id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
