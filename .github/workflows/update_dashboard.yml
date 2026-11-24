@@ -36,6 +36,8 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: 기준월 한 달 넘기고 대시보드 생성
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python python/build_dashboard.py --advance
 
       - name: 변경 내용 커밋
