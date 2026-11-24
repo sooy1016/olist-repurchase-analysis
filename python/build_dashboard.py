@@ -229,8 +229,8 @@ def compute(o, f, month):
     rr, rn = region_rate(recent)
     br, bn = region_rate(before)
     reg = pd.DataFrame({"recent": rr, "recent_n": rn, "before": br, "before_n": bn}).reindex(REGIONS)
-    reg_label = (f"{pl(recent[0])}~{pl(recent[-1])}",
-                 f"{pl(before[0])}~{pl(before[-1])}" if len(before) else None)
+    reg_label = (f"최근 {len(recent)}개월 ({pl(recent[0])}~{pl(recent[-1])})",
+                 f"그 전 {len(before)}개월 ({pl(before[0])}~{pl(before[-1])})" if len(before) else "그 전 기간 (데이터 없음)")
 
     # 예상 도착일 대비 도착 시점별 1~2점 리뷰 비율: 이번 달 배송 vs 직전 12개월 배송
     d = oo[oo["deliv"] & oo["review_score"].notna()].copy()
@@ -243,7 +243,8 @@ def compute(o, f, month):
 
     bc, bp = band_rate(d[in_cur]), band_rate(d[in_prev])
     band = pd.DataFrame({"cur": bc["low"], "cur_n": bc["n"], "prev": bp["low"], "prev_n": bp["n"]})
-    band_prev_label = f"{pl(max(month - 12, d['deliv_month'].min()))}~{pl(month - 1)}"
+    b_start = max(month - 12, d["deliv_month"].min())
+    band_prev_label = f"직전 {(month - b_start).n}개월 ({pl(b_start)}~{pl(month - 1)})"
 
     # 퍼널: 전월 주문 기준 (각 주문월은 다음 달 말일 시점으로 평가해 배송 시간을 같게 맞춤)
     def funnel_of(pm):
@@ -521,7 +522,7 @@ def build_html(r, headline, details, comment_source=""):
   <div class="panel"><h3>1~2점 리뷰 비율</h3><div id="c-low" class="chart"></div></div>
 </div>
 
-<h2>권역 비교<span>최근 6개월과 그 전 6개월 비교</span></h2>
+<h2>권역 비교<span>최근 6개월과 그 전 기간 비교</span></h2>
 <div class="panel"><h3>권역별 첫 구매 고객 재구매율</h3>
   <div class="desc">배송 완료월 기준 · 한 달씩 보면 권역별 고객 수가 적어 6개월씩 묶음</div>
   <div id="c-region" class="chart"></div></div>
@@ -543,6 +544,7 @@ def build_html(r, headline, details, comment_source=""):
 <footer>
   <b>지표 정의</b> · 첫 구매 고객 재구매율: 첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율(첫 구매와 같은 날 주문 제외),
   30일 관찰이 끝난 배송 완료월만 표시 · 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율 ·
+  1~2점 리뷰 비율: 해당 월 배송 완료 주문 중 리뷰가 있는 주문에서 1~2점(주문별 평균) 비율 ·
   거래액: 상품 가격 합계(배송비 제외, 취소·상품 없음 주문 제외)<br>
   <b>평소 범위</b> · 최근 6개월 평균 ± 2 × 표준편차. 이 범위를 나쁜 쪽으로 벗어나면 주의<br>
   <b>데이터</b> · Brazilian E-Commerce Public Dataset by Olist (Kaggle). 2017.01~2018.08 과거 데이터를 기준월 단위로 공급해 운영 환경을 시뮬레이션.
@@ -626,12 +628,11 @@ const pair = (id, x, cur, prev, curName, prevName, digits, curN, prevN, nUnit, l
 
 // 권역별 재구매율: 최근 6개월 vs 그 전 6개월
 pair('c-region', D.region.x, D.region.recent, D.region.before,
-     `최근 6개월 (${{D.region.recent_label}})`, D.region.before_label ? `그 전 6개월 (${{D.region.before_label}})` : '그 전 6개월 (데이터 없음)',
-     2, D.region.recent_n, D.region.before_n, '명');
+     D.region.recent_label, D.region.before_label, 2, D.region.recent_n, D.region.before_n, '명');
 
 // 예상 도착일 대비 1~2점 리뷰 비율: 이번 달 vs 직전 12개월
 pair('c-band', D.band.x, D.band.cur, D.band.prev,
-     `이번 달 (${{D.band.cur_label}})`, `직전 12개월 (${{D.band.prev_label}})`, 1, D.band.cur_n, D.band.prev_n, '건');
+     `이번 달 (${{D.band.cur_label}})`, D.band.prev_label, 1, D.band.cur_n, D.band.prev_n, '건');
 
 // 퍼널: 전월 주문 vs 직전 3개월 평균 (주문 대비 비율)
 mk('c-funnel', {{

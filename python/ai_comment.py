@@ -12,9 +12,13 @@ API 키는 환경 변수 GEMINI_API_KEY에서 읽는다 (GitHub Actions에서는
 import json
 import os
 import re
+import time
 import urllib.request
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+FALLBACK_MODEL = "gemini-2.5-flash"                                 # 기본 모델이 계속 응답하지 않을 때
+# 시도 계획: (모델, 시도 전 대기 초). 503(서버 혼잡)·429(요청 한도)는 잠시 뒤 다시 시도하면 대부분 해결됨
+ATTEMPTS = [(MODEL, 0), (MODEL, 20), (FALLBACK_MODEL, 20)]
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 BANNED = ["때문", "원인", "탓", "인해", "덕분", "초래", "야기"]      # 인과 단정 표현
 BANNED_TERMS = ["GMV", "gmv", "AOV", "aov"]                          # 한눈에 안 들어오는 약어 (거래액, 객단가로 표기)
@@ -60,13 +64,13 @@ def build_prompt(payload):
 JSON 하나만 출력한다: {{"headline": "...", "details": ["...", "..."]}}"""
 
 
-def call_gemini(prompt, api_key, timeout=60):
+def call_gemini(prompt, api_key, model=MODEL, timeout=60):
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
     }).encode("utf-8")
     req = urllib.request.Request(
-        ENDPOINT.format(model=MODEL), data=body, method="POST",
+        ENDPOINT.format(model=model), data=body, method="POST",
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key})
     with urllib.request.urlopen(req, timeout=timeout) as res:
         data = json.loads(res.read().decode("utf-8"))
@@ -130,21 +134,30 @@ def validate(result, payload):
 
 
 def generate(payload):
-    """(headline, details, 표시 문구) 또는 None (키 없음·호출 실패·검증 실패)"""
+    """(headline, details, 표시 문구) 또는 None (키 없음·모든 시도 실패)
+    - 호출 실패(서버 혼잡 등): 잠시 기다렸다가 다시 시도, 마지막에는 다른 모델로 시도
+    - 검증 실패: 실패 이유를 알려주고 다시 작성하게 함"""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         print("[AI 해석] GEMINI_API_KEY 없음 → 규칙 기반 요약 사용")
         return None
-    try:
-        result = call_gemini(build_prompt(payload), api_key)
-    except Exception as e:                      # 어떤 오류든 대시보드 생성은 계속
-        print(f"[AI 해석] 호출 실패 → 규칙 기반 요약 사용: {e}")
-        return None
-    ok, reason = validate(result, payload)
-    if not ok:
-        print(f"[AI 해석] 검증 실패 → 규칙 기반 요약 사용: {reason}")
+    prompt = build_prompt(payload)
+    for i, (model, wait) in enumerate(ATTEMPTS, start=1):
+        if wait:
+            time.sleep(wait)
+        try:
+            result = call_gemini(prompt, api_key, model)
+        except Exception as e:                  # 어떤 오류든 대시보드 생성은 계속
+            print(f"[AI 해석] 호출 실패 ({i}회차, {model}): {e}")
+            continue
+        ok, reason = validate(result, payload)
+        if ok:
+            print(f"[AI 해석] 검증 통과 ({i}회차, {model})")
+            return (result["headline"].strip(), [str(d).strip() for d in result["details"]],
+                    f"AI 요약 · 수치 검증 완료 ({model})")
+        print(f"[AI 해석] 검증 실패 ({i}회차, {model}): {reason}")
         print(json.dumps(result, ensure_ascii=False))
-        return None
-    print("[AI 해석] 검증 통과")
-    return result["headline"].strip(), [str(d).strip() for d in result["details"]], \
-        f"AI 요약 · 수치 검증 완료 ({MODEL})"
+        prompt = (build_prompt(payload)
+                  + f"\n\n[재작성 요청]\n이전 답변이 검증에 실패했다: {reason}\n작성 규칙을 지켜 다시 작성하라.")
+    print("[AI 해석] 모든 시도 실패 → 규칙 기반 요약 사용")
+    return None
