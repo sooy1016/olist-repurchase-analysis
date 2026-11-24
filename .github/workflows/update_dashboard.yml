@@ -1,0 +1,59 @@
+# 대시보드 자동 갱신 · 게시
+# - 실제 운영 가정: 매월 1일, 전월 데이터로 갱신
+# - 시연: 매주 월요일 실행할 때마다 한 달치 데이터가 새로 들어온 것으로 보고 기준월을 한 달 넘김
+name: Update dashboard
+
+on:
+  schedule:
+    - cron: "17 0 * * 1"      # 매주 월요일 00:17 UTC = 한국 시간 09:17
+  workflow_dispatch:           # Actions 탭에서 수동 실행 버튼
+
+permissions:
+  contents: write              # state.json, dashboard/ 변경 내용을 저장소에 커밋
+  pages: write                 # GitHub Pages 게시
+  id-token: write
+
+concurrency:
+  group: dashboard
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: 저장소 내려받기
+        uses: actions/checkout@v4
+
+      - name: 파이썬 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 패키지 설치
+        run: pip install -r requirements.txt
+
+      - name: 기준월 한 달 넘기고 대시보드 생성
+        run: python python/build_dashboard.py --advance
+
+      - name: 변경 내용 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add dashboard/
+          git commit -m "대시보드 자동 갱신: 기준월 $(python -c "import json;print(json.load(open('dashboard/state.json'))['current_month'])")" || echo "변경 없음"
+          git push
+
+      - name: Pages 설정
+        uses: actions/configure-pages@v5
+
+      - name: 게시할 파일 올리기
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard
+
+      - name: GitHub Pages 게시
+        id: deploy
+        uses: actions/deploy-pages@v4
