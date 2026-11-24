@@ -1,0 +1,89 @@
+{
+  "month": "2018-08",
+  "metrics": {
+    "repurchase": {
+      "name": "첫 구매 고객 재구매율",
+      "value_pct": 0.55,
+      "prev_pct": 0.4,
+      "normal_range_pct": [
+        0.25,
+        0.72
+      ],
+      "status": "정상",
+      "position": "범위 안"
+    },
+    "late": {
+      "name": "예상일 초과 도착 비율",
+      "value_pct": 6.65,
+      "prev_pct": 1.34,
+      "normal_range_pct": [
+        0.0,
+        19.79
+      ],
+      "status": "정상",
+      "position": "범위 안"
+    },
+    "low_review": {
+      "name": "1~2점 리뷰 비율",
+      "value_pct": 10.0,
+      "prev_pct": 9.22,
+      "normal_range_pct": [
+        5.77,
+        22.59
+      ],
+      "status": "정상",
+      "position": "범위 안"
+    }
+  },
+  "repurchase_detail": {
+    "cohort": "2018-07",
+    "customers": 5630,
+    "southeast_pct": 0.55
+  },
+  "late_change_by_state": [
+    {
+      "state": "SP",
+      "region": "남동부",
+      "orders": 3859,
+      "rate": 9.3,
+      "rate_prev": 1.0,
+      "contribution_pp": 3.86
+    },
+    {
+      "state": "RJ",
+      "region": "남동부",
+      "orders": 959,
+      "rate": 5.3,
+      "rate_prev": 1.7,
+      "contribution_pp": 0.43
+    },
+    {
+      "state": "MG",
+      "region": "남동부",
+      "orders": 867,
+      "rate": 1.7,
+      "rate_prev": 0.0,
+      "contribution_pp": 0.18
+    },
+    {
+      "state": "RS",
+      "region": "남부",
+      "orders": 402,
+      "rate": 3.7,
+      "rate_prev": 0.0,
+      "contribution_pp": 0.18
+    },
+    {
+      "state": "PR",
+      "region": "남부",
+      "orders": 405,
+      "rate": 3.5,
+      "rate_prev": 0.0,
+      "contribution_pp": 0.17
+    }
+  ],
+  "orders": {
+    "value": 6512,
+    "prev": 6289
+  }
+}
