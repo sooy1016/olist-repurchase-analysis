@@ -1,12 +1,13 @@
 {
-  "month": "2017-08",
+  "month": "2017-09",
   "metrics": {
     "repurchase": {
       "name": "첫 구매 고객 재구매율",
-      "value_pct": 0.51,
-      "prev_pct": 0.45,
+      "value_pct": 0.57,
+      "prev_pct": 0.51,
+      "change_pp": 0.07,
       "normal_range_pct": [
-        0.17,
+        0.22,
         0.86
       ],
       "status": "정상",
@@ -14,76 +15,95 @@
     },
     "late": {
       "name": "예상일 초과 도착 비율",
-      "value_pct": 2.28,
-      "prev_pct": 2.6,
+      "value_pct": 3.88,
+      "prev_pct": 2.28,
+      "change_pp": 1.61,
       "normal_range_pct": [
-        0.0,
-        6.46
+        0.8,
+        5.71
       ],
       "status": "정상",
       "position": "범위 안"
     },
     "low_review": {
       "name": "1~2점 리뷰 비율",
-      "value_pct": 9.61,
-      "prev_pct": 9.75,
+      "value_pct": 9.73,
+      "prev_pct": 9.61,
+      "change_pp": 0.13,
       "normal_range_pct": [
-        8.03,
-        13.01
+        8.33,
+        12.89
       ],
       "status": "정상",
       "position": "범위 안"
     }
   },
   "repurchase_detail": {
-    "cohort": "2017-07",
-    "customers": 3350,
-    "southeast_pct": 0.64
+    "cohort": "2017-08",
+    "customers": 4010,
+    "southeast_pct": 0.52,
+    "southeast_prev_pct": 0.64
   },
+  "late_change_total_pp": 1.61,
   "late_change_by_state": [
     {
-      "state": "SP",
+      "state": "RS",
+      "region": "남부",
+      "orders": 271,
+      "rate": 8.1,
+      "rate_prev": 1.5,
+      "contribution_pp": 0.46
+    },
+    {
+      "state": "PE",
+      "region": "북동부",
+      "orders": 106,
+      "rate": 18.9,
+      "rate_prev": 7.5,
+      "contribution_pp": 0.39
+    },
+    {
+      "state": "MG",
       "region": "남동부",
-      "orders": 1748,
-      "rate": 2.0,
-      "rate_prev": 2.7,
-      "contribution_pp": -0.34
+      "orders": 488,
+      "rate": 2.5,
+      "rate_prev": 1.1,
+      "contribution_pp": 0.19
     },
     {
       "state": "ES",
       "region": "남동부",
-      "orders": 99,
-      "rate": 0.0,
-      "rate_prev": 7.1,
-      "contribution_pp": -0.14
+      "orders": 87,
+      "rate": 8.0,
+      "rate_prev": 0.0,
+      "contribution_pp": 0.18
     },
     {
-      "state": "PR",
-      "region": "남부",
-      "orders": 248,
-      "rate": 0.0,
-      "rate_prev": 1.9,
-      "contribution_pp": -0.09
-    },
-    {
-      "state": "BA",
-      "region": "북동부",
-      "orders": 168,
-      "rate": 4.2,
-      "rate_prev": 7.3,
-      "contribution_pp": -0.07
-    },
-    {
-      "state": "RJ",
-      "region": "남동부",
-      "orders": 564,
-      "rate": 2.7,
-      "rate_prev": 2.9,
-      "contribution_pp": -0.06
+      "state": "GO",
+      "region": "중서부",
+      "orders": 89,
+      "rate": 6.7,
+      "rate_prev": 2.2,
+      "contribution_pp": 0.1
     }
   ],
   "orders": {
-    "value": 4331,
-    "prev": 4026
+    "value": 4284,
+    "prev": 4331,
+    "change_pct": -1.1
+  },
+  "gmv_10k_brl": {
+    "value": 62.1,
+    "prev": 56.8,
+    "change_pct": 9.3
+  },
+  "comment": {
+    "headline": "2017년 9월 모든 주요 지표는 평소 범위 내 정상을 유지함.",
+    "details": [
+      "첫 구매 고객 재구매율(0.57%), 1~2점 리뷰 비율(9.73%), 예상일 초과 도착 비율(3.88%) 등 전 지표가 평소 범위 안에서 정상 상태를 유지함.",
+      "예상일 초과 도착 비율의 전월 대비 1.61%p 변동에는 RS(기여도 0.46%p), PE(기여도 0.39%p), MG(기여도 0.19%p) 등의 지역이 주요하게 기여하며 함께 나타남.",
+      "과거 분석상 배송 지연과 1~2점 리뷰는 낮은 재구매율과 관련이 관측되었으므로 지연 발생 지역을 중심으로 관찰이 필요함."
+    ],
+    "source": "AI 요약 · 수치 검증 완료 (gemini-3.5-flash)"
   }
 }
