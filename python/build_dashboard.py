@@ -363,10 +363,10 @@ def cards_html(r):
     rp, lt, lw = m["repurchase"], m["late"], m["low_review"]
     return f"""
 <div class="card">
-  <div class="label">첫 구매 고객 재구매율 <span class="hint">배송 후 30일 이내</span></div>
+  <div class="label">첫 구매 고객 재구매율 <span class="hint">{rp['cohort']} 배송 고객</span></div>
   <div class="row"><div class="value">{rp['value'] * 100:.2f}%</div>{badge(rp['status'])}</div>
   {fmt_delta(rp['value'], rp['prev'], 'pp')}
-  <div class="note">{rp['cohort']} 배송 고객 {rp['n']:,}명 · 남동부 {rp['se'] * 100:.2f}%<br>{range_note(rp)}</div>
+  <div class="note">{rp['n']:,}명 · 남동부 {rp['se'] * 100:.2f}%<br>{range_note(rp)}</div>
 </div>
 <div class="card">
   <div class="label">예상일 초과 도착 비율</div>
@@ -543,7 +543,7 @@ def build_html(r, headline, details, comment_source=""):
 
 <footer>
   <b>지표 정의</b> · 첫 구매 고객 재구매율: 첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율(첫 구매와 같은 날 주문 제외),
-  30일 관찰이 끝난 배송 완료월만 표시 · 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율 ·
+  재구매 여부는 배송 후 30일이 지나야 확정되므로 확정된 배송 달까지만 표시 · 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율 ·
   1~2점 리뷰 비율: 해당 월 배송 완료 주문 중 리뷰가 있는 주문에서 1~2점(주문별 평균) 비율 ·
   거래액: 상품 가격 합계(배송비 제외, 취소·상품 없음 주문 제외)<br>
   <b>평소 범위</b> · 최근 6개월 평균 ± 2 × 표준편차. 이 범위를 나쁜 쪽으로 벗어나면 주의<br>

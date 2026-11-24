@@ -26,7 +26,8 @@ BANNED_TERMS = ["GMV", "gmv", "AOV", "aov"]                          # 한눈에
 ALWAYS_OK = {1, 2, 3, 4, 6, 12, 30}                                # 지표 정의에 쓰이는 숫자 (1~2점, 30일, 6개월 등)
 
 DEFINITIONS = """\
-- 첫 구매 고객 재구매율: 첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율 (첫 구매와 같은 날 주문 제외). 배송 완료월 기준
+- 첫 구매 고객 재구매율: 첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율 (첫 구매와 같은 날 주문 제외).
+  30일을 지켜봐야 알 수 있어서 기준월(month)이 아니라 repurchase_detail.cohort 달에 배송받은 고객의 값임
 - 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율
 - 1~2점 리뷰 비율: 해당 월 배송 완료 주문 중 리뷰가 1~2점인 비율
 - 평소 범위: 최근 6개월 평균 ± 2 × 표준편차. 나쁜 쪽으로 벗어나면 '주의', 그 외는 '정상'
@@ -59,7 +60,8 @@ def build_prompt(payload):
 3. 숫자는 JSON에 있는 값만 그대로 쓴다. 새로 계산하거나 반올림을 바꾸지 않는다. 퍼센트는 % 또는 %p를 붙인다.
 4. 원인을 단정하지 않는다. '때문', '원인', '탓', '인해' 같은 표현 대신 '관련', '함께 나타남'을 쓴다.
 5. 문장은 '~임', '~함', '~필요' 같은 개조식으로 끝낸다. 담당 부서나 담당자는 지정하지 않는다.
-6. 지표는 JSON의 name에 적힌 한국어 이름 그대로 부른다 (예: 거래액). GMV, AOV처럼 한눈에 이해하기 어려운 약어는 쓰지 않는다.
+6. '첫 구매 고객 재구매율'을 말할 때는 '2017년 12월 배송 고객 기준'처럼 repurchase_detail.cohort 달을 함께 쓴다. 기준월의 재구매율처럼 쓰지 않는다.
+7. 지표는 JSON의 name에 적힌 한국어 이름 그대로 부른다 (예: 거래액). GMV, AOV처럼 한눈에 이해하기 어려운 약어는 쓰지 않는다.
 
 [출력 형식]
 JSON 하나만 출력한다: {{"headline": "...", "details": ["...", "..."]}}"""
@@ -104,6 +106,14 @@ def allowed_numbers(payload):
     return allowed
 
 
+def mentions_month(text, ym):
+    """'2017-12'를 2017년 12월, 2017.12, 2017-12, 17년 12월 등 어떤 형태로든 언급했는지"""
+    y, m = ym.split("-")
+    m1 = str(int(m))
+    pats = [rf"{y}\s*년\s*0?{m1}\s*월", rf"{y}[.\-/]\s*0?{m1}(?!\d)", rf"{y[2:]}\s*년\s*0?{m1}\s*월"]
+    return any(re.search(p, text) for p in pats)
+
+
 def validate(result, payload):
     """(통과 여부, 실패 이유)"""
     if not isinstance(result, dict) or not isinstance(result.get("headline"), str) \
@@ -121,6 +131,9 @@ def validate(result, payload):
     for w in BANNED_TERMS:
         if re.search(rf"(?<![A-Za-z]){w}(?![A-Za-z])", text):
             return False, f"대시보드에 없는 용어 사용: '{w}'"
+
+    if "첫 구매 고객 재구매율" in text and not mentions_month(text, payload["repurchase_detail"]["cohort"]):
+        return False, f"재구매율의 배송 완료월({payload['repurchase_detail']['cohort']})을 밝히지 않음"
 
     has_warn = any(m["status"] == "주의" for m in payload["metrics"].values())
     if has_warn != ("주의" in headline):
