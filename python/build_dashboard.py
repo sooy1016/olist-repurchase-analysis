@@ -297,10 +297,11 @@ def analysis_payload(r):
                                southeast_prev_pct=pct(m["repurchase"]["se_prev"])),
         late_change_total_pp=pct(r["total_late_change"]),
         late_change_by_state=top,
-        orders=dict(value=m["orders"]["value"], prev=m["orders"]["prev"],
+        orders=dict(name="주문 수", value=m["orders"]["value"], prev=m["orders"]["prev"],
                     change_pct=round((m["orders"]["value"] / m["orders"]["prev"] - 1) * 100, 1)),
-        gmv_10k_brl=dict(value=round(m["gmv"]["value"] / 10000, 1), prev=round(m["gmv"]["prev"] / 10000, 1),
-                         change_pct=round((m["gmv"]["value"] / m["gmv"]["prev"] - 1) * 100, 1)),
+        sales=dict(name="거래액 (만 헤알)", value=round(m["gmv"]["value"] / 10000, 1),
+                   prev=round(m["gmv"]["prev"] / 10000, 1),
+                   change_pct=round((m["gmv"]["value"] / m["gmv"]["prev"] - 1) * 100, 1)),
     )
 
 

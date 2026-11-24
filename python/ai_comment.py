@@ -17,6 +17,7 @@ import urllib.request
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 BANNED = ["때문", "원인", "탓", "인해", "덕분", "초래", "야기"]      # 인과 단정 표현
+BANNED_TERMS = ["GMV", "gmv", "AOV", "aov"]                          # 한눈에 안 들어오는 약어 (거래액, 객단가로 표기)
 ALWAYS_OK = {1, 2, 3, 4, 6, 12, 30}                                # 지표 정의에 쓰이는 숫자 (1~2점, 30일, 6개월 등)
 
 DEFINITIONS = """\
@@ -24,7 +25,8 @@ DEFINITIONS = """\
 - 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율
 - 1~2점 리뷰 비율: 해당 월 배송 완료 주문 중 리뷰가 1~2점인 비율
 - 평소 범위: 최근 6개월 평균 ± 2 × 표준편차. 나쁜 쪽으로 벗어나면 '주의', 그 외는 '정상'
-- late_change_by_state.contribution_pp: 전체 예상일 초과 도착 비율 변화를 주별로 나눈 값 (합하면 전체 변화)"""
+- late_change_by_state.contribution_pp: 전체 예상일 초과 도착 비율 변화를 주별로 나눈 값 (합하면 전체 변화)
+- 주문 수: 해당 월 주문 건수 / 거래액: 해당 월 상품 가격 합계 (배송비 제외, 단위 만 헤알)"""
 
 PAST_FINDINGS = """\
 - 예상 도착일보다 늦게 도착하면 1~2점 리뷰 비율이 크게 높아졌다
@@ -52,6 +54,7 @@ def build_prompt(payload):
 3. 숫자는 JSON에 있는 값만 그대로 쓴다. 새로 계산하거나 반올림을 바꾸지 않는다. 퍼센트는 % 또는 %p를 붙인다.
 4. 원인을 단정하지 않는다. '때문', '원인', '탓', '인해' 같은 표현 대신 '관련', '함께 나타남'을 쓴다.
 5. 문장은 '~임', '~함', '~필요' 같은 개조식으로 끝낸다. 담당 부서나 담당자는 지정하지 않는다.
+6. 지표는 JSON의 name에 적힌 한국어 이름 그대로 부른다 (예: 거래액). GMV, AOV처럼 한눈에 이해하기 어려운 약어는 쓰지 않는다.
 
 [출력 형식]
 JSON 하나만 출력한다: {{"headline": "...", "details": ["...", "..."]}}"""
@@ -109,6 +112,10 @@ def validate(result, payload):
     for w in BANNED:
         if w in text:
             return False, f"인과 단정 표현 사용: '{w}'"
+
+    for w in BANNED_TERMS:
+        if re.search(rf"(?<![A-Za-z]){w}(?![A-Za-z])", text):
+            return False, f"대시보드에 없는 용어 사용: '{w}'"
 
     has_warn = any(m["status"] == "주의" for m in payload["metrics"].values())
     if has_warn != ("주의" in headline):
