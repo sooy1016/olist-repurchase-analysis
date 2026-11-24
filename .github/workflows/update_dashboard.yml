@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "17 0 * * 1"      # 매주 월요일 00:17 UTC = 한국 시간 09:17
   workflow_dispatch:           # Actions 탭에서 수동 실행 버튼
+    inputs:
+      advance:
+        description: "기준월을 한 달 넘기기 (끄면 같은 달을 다시 생성)"
+        type: boolean
+        default: true
 
 permissions:
   contents: write              # state.json, dashboard/ 변경 내용을 저장소에 커밋
@@ -37,7 +42,12 @@ jobs:
       - name: 기준월 한 달 넘기고 대시보드 생성
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-        run: python python/build_dashboard.py --advance
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.advance }}" = "false" ]; then
+            python python/build_dashboard.py
+          else
+            python python/build_dashboard.py --advance
+          fi
 
       - name: 변경 내용 커밋
         run: |
