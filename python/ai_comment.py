@@ -1,0 +1,143 @@
+"""
+대시보드 해석 문장 생성 (Gemini API) + 검증
+------------------------------------------------------------
+역할 분담
+  - 계산·판정 : build_dashboard.py (지표, 평소 범위, 정상/주의, 주별 기여)
+  - 문장 작성 : Gemini (판정 결과를 읽고 결론 1줄 + 상세 해석 작성)
+  - 검증     : 이 파일 (숫자, 표현, 판정과의 일치 여부)
+검증을 통과하지 못하거나 API 키가 없으면 규칙 기반 요약을 그대로 사용한다.
+
+API 키는 환경 변수 GEMINI_API_KEY에서 읽는다 (GitHub Actions에서는 저장소 Secrets).
+"""
+import json
+import os
+import re
+import urllib.request
+
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+BANNED = ["때문", "원인", "탓", "인해", "덕분", "초래", "야기"]      # 인과 단정 표현
+ALWAYS_OK = {1, 2, 3, 4, 6, 12, 30}                                # 지표 정의에 쓰이는 숫자 (1~2점, 30일, 6개월 등)
+
+DEFINITIONS = """\
+- 첫 구매 고객 재구매율: 첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율 (첫 구매와 같은 날 주문 제외). 배송 완료월 기준
+- 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율
+- 1~2점 리뷰 비율: 해당 월 배송 완료 주문 중 리뷰가 1~2점인 비율
+- 평소 범위: 최근 6개월 평균 ± 2 × 표준편차. 나쁜 쪽으로 벗어나면 '주의', 그 외는 '정상'
+- late_change_by_state.contribution_pp: 전체 예상일 초과 도착 비율 변화를 주별로 나눈 값 (합하면 전체 변화)"""
+
+PAST_FINDINGS = """\
+- 예상 도착일보다 늦게 도착하면 1~2점 리뷰 비율이 크게 높아졌다
+- 첫 구매 배송 기간이 길수록 재구매율이 낮았다
+- 1~2점 리뷰를 준 고객은 재구매율이 낮았다
+- 위 결과는 관측 데이터 분석이라 인과관계로 단정할 수 없다"""
+
+
+def build_prompt(payload):
+    return f"""당신은 이커머스 회사의 데이터 분석가다. 아래 월간 지표 판정 결과를 읽고,
+경영진과 협업 부서가 볼 대시보드의 해석 문장을 작성하라.
+
+[지표 정의]
+{DEFINITIONS}
+
+[과거 분석에서 확인된 관련성]
+{PAST_FINDINGS}
+
+[이번 달 판정 결과 (JSON)]
+{json.dumps(payload, ensure_ascii=False, indent=2)}
+
+[작성 규칙]
+1. headline: 이번 달 상태를 개조식 한 줄(60자 이내)로 쓴다. status가 '주의'인 지표가 있으면 반드시 '주의'라는 단어로 시작하고, 없으면 '주의'라는 단어를 쓰지 않는다.
+2. details: 개조식 2~4개. 순서는 (1) 무엇이 변했나 (2) 어디서 변했나 (3) 재구매와의 관련성. 평소 범위 안의 작은 변화에는 의미를 부여하지 않는다.
+3. 숫자는 JSON에 있는 값만 그대로 쓴다. 새로 계산하거나 반올림을 바꾸지 않는다. 퍼센트는 % 또는 %p를 붙인다.
+4. 원인을 단정하지 않는다. '때문', '원인', '탓', '인해' 같은 표현 대신 '관련', '함께 나타남'을 쓴다.
+5. 문장은 '~임', '~함', '~필요' 같은 개조식으로 끝낸다. 담당 부서나 담당자는 지정하지 않는다.
+
+[출력 형식]
+JSON 하나만 출력한다: {{"headline": "...", "details": ["...", "..."]}}"""
+
+
+def call_gemini(prompt, api_key, timeout=60):
+    body = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2, "responseMimeType": "application/json"},
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        ENDPOINT.format(model=MODEL), data=body, method="POST",
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key})
+    with urllib.request.urlopen(req, timeout=timeout) as res:
+        data = json.loads(res.read().decode("utf-8"))
+    text = "".join(p.get("text", "") for p in data["candidates"][0]["content"]["parts"])
+    return json.loads(text)
+
+
+# ------------------------------------------------------------------ 검증
+def _numbers_in(obj):
+    """JSON 안의 모든 숫자 (문자열 속 숫자 포함, 예: '2018-08' → 2018, 8)"""
+    if isinstance(obj, bool):
+        return []
+    if isinstance(obj, (int, float)):
+        return [float(obj)]
+    if isinstance(obj, str):
+        return [float(x) for x in re.findall(r"\d+(?:\.\d+)?", obj)]
+    if isinstance(obj, dict):
+        return [n for v in obj.values() for n in _numbers_in(v)]
+    if isinstance(obj, list):
+        return [n for v in obj for n in _numbers_in(v)]
+    return []
+
+
+def allowed_numbers(payload):
+    allowed = set(ALWAYS_OK)
+    for n in _numbers_in(payload):
+        allowed.add(round(abs(n), 2))
+        allowed.add(round(abs(n), 1))
+        allowed.add(round(abs(n)))
+    return allowed
+
+
+def validate(result, payload):
+    """(통과 여부, 실패 이유)"""
+    if not isinstance(result, dict) or not isinstance(result.get("headline"), str) \
+            or not isinstance(result.get("details"), list) or not result["details"]:
+        return False, "출력 형식이 맞지 않음"
+    headline, details = result["headline"].strip(), [str(d).strip() for d in result["details"]]
+    if len(headline) > 80 or not 1 <= len(details) <= 4:
+        return False, "길이 또는 항목 수 초과"
+
+    text = headline + " " + " ".join(details)
+    for w in BANNED:
+        if w in text:
+            return False, f"인과 단정 표현 사용: '{w}'"
+
+    has_warn = any(m["status"] == "주의" for m in payload["metrics"].values())
+    if has_warn != ("주의" in headline):
+        return False, "결론 줄의 '주의' 표시가 판정 결과와 다름"
+
+    allowed = allowed_numbers(payload)
+    for n in re.findall(r"\d+(?:\.\d+)?", text.replace(",", "")):
+        v = float(n)
+        if not any(abs(v - a) < 0.005 for a in allowed):
+            return False, f"입력에 없는 숫자 사용: {n}"
+    return True, ""
+
+
+def generate(payload):
+    """(headline, details, 표시 문구) 또는 None (키 없음·호출 실패·검증 실패)"""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("[AI 해석] GEMINI_API_KEY 없음 → 규칙 기반 요약 사용")
+        return None
+    try:
+        result = call_gemini(build_prompt(payload), api_key)
+    except Exception as e:                      # 어떤 오류든 대시보드 생성은 계속
+        print(f"[AI 해석] 호출 실패 → 규칙 기반 요약 사용: {e}")
+        return None
+    ok, reason = validate(result, payload)
+    if not ok:
+        print(f"[AI 해석] 검증 실패 → 규칙 기반 요약 사용: {reason}")
+        print(json.dumps(result, ensure_ascii=False))
+        return None
+    print("[AI 해석] 검증 통과")
+    return result["headline"].strip(), [str(d).strip() for d in result["details"]], \
+        f"AI 요약 · 수치 검증 완료 ({MODEL})"

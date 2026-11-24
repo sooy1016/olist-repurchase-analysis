@@ -11,7 +11,8 @@ HTML 대시보드(ECharts)로 만든다.
 입력 : outputs/orders_mart.csv     (주문 1건 = 1행, sql/06_dashboard/40_dashboard_exports.sql ①)
        outputs/first_purchase.csv  (첫 구매 고객 1명 = 1행, 같은 파일 ②)
 출력 : dashboard/index.html        (GitHub Pages로 게시)
-       dashboard/analysis.json     (판정 결과. AI 해석의 입력으로 사용)
+       dashboard/analysis.json     (지표별 판정 결과 요약 + 해석 문장)
+해석 : python/ai_comment.py        (Gemini로 해석 문장 작성 후 검증, 실패 시 규칙 기반 요약)
 상태 : dashboard/state.json        (현재 기준월)
 
 [운영 시뮬레이션]
@@ -37,6 +38,8 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+
+import ai_comment
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORDERS = os.path.join(ROOT, "outputs", "orders_mart.csv")
@@ -269,13 +272,13 @@ def compute(o, f, month):
                 funnel=funnel, monthly=monthly)
 
 
-# ================================================================== 해석 (규칙 기반, 4단계에서 AI로 교체)
+# ================================================================== 해석 (규칙 기반 요약)
 NAMES = {"repurchase": "첫 구매 고객 재구매율", "late": "예상일 초과 도착 비율",
          "low_review": "1~2점 리뷰 비율"}
 
 
 def analysis_payload(r):
-    """AI 해석에 넘길 입력. 계산은 전부 여기서 끝내고 AI에는 결과만 준다."""
+    """지표별 값, 평소 범위, 판정, 주별 기여를 정리한 요약 (dashboard/analysis.json)"""
     m = r["metrics"]
     top = [dict(state=s, region=row["region"], orders=int(row["n"]),
                 rate=round(row["rate"] * 100, 1), rate_prev=None if pd.isna(row["rate_prev"]) else round(row["rate_prev"] * 100, 1),
@@ -285,18 +288,24 @@ def analysis_payload(r):
     return dict(
         month=str(r["month"]),
         metrics={k: dict(name=NAMES[k], value_pct=pct(m[k]["value"]), prev_pct=pct(m[k]["prev"]),
+                         change_pp=pct(m[k]["value"] - m[k]["prev"]),
                          normal_range_pct=[pct(m[k]["lo"]), pct(m[k]["hi"])], status=m[k]["status"],
                          position=m[k]["position"])
                  for k in NAMES},
         repurchase_detail=dict(cohort=m["repurchase"]["cohort"], customers=m["repurchase"]["n"],
-                               southeast_pct=pct(m["repurchase"]["se"])),
+                               southeast_pct=pct(m["repurchase"]["se"]),
+                               southeast_prev_pct=pct(m["repurchase"]["se_prev"])),
+        late_change_total_pp=pct(r["total_late_change"]),
         late_change_by_state=top,
-        orders=dict(value=m["orders"]["value"], prev=m["orders"]["prev"]),
+        orders=dict(value=m["orders"]["value"], prev=m["orders"]["prev"],
+                    change_pct=round((m["orders"]["value"] / m["orders"]["prev"] - 1) * 100, 1)),
+        gmv_10k_brl=dict(value=round(m["gmv"]["value"] / 10000, 1), prev=round(m["gmv"]["prev"] / 10000, 1),
+                         change_pct=round((m["gmv"]["value"] / m["gmv"]["prev"] - 1) * 100, 1)),
     )
 
 
 def rule_comment(r):
-    """규칙 기반 요약 (개조식): (결론 1줄, 상세 목록). AI 해석을 붙이면 AI 문장으로 교체, 검증 실패 시 대체용"""
+    """규칙 기반 요약 (개조식): (결론 1줄, 상세 목록)"""
     m = r["metrics"]
     warn = [k for k in NAMES if m[k]["status"] == "주의"]
     outside = [k for k in NAMES if m[k]["position"] in ("범위보다 높음", "범위보다 낮음")]
@@ -684,6 +693,7 @@ def main():
     ap.add_argument("--advance", action="store_true", help="기준월을 한 달 넘김")
     ap.add_argument("--month", help="기준월 지정 (예: 2018-08)")
     ap.add_argument("--validate", action="store_true", help="원본 분석 숫자와 대조만 함")
+    ap.add_argument("--no-ai", action="store_true", help="AI 해석 없이 규칙 기반 요약만 사용")
     args = ap.parse_args()
 
     o, f = load()
@@ -699,12 +709,20 @@ def main():
     month = min(max(month, FIRST_MONTH), LAST_MONTH)
 
     r = compute(o, f, month)
+    payload = analysis_payload(r)
     headline, details = rule_comment(r)
+    source = ""
+    ai = None if args.no_ai else ai_comment.generate(payload)
+    if ai:
+        headline, details, source = ai
+    payload["comment"] = dict(headline=headline, details=details,
+                              source=source or "규칙 기반 요약")
+
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(os.path.join(OUT_DIR, "index.html"), "w", encoding="utf-8") as fp:
-        fp.write(build_html(r, headline, details))
+        fp.write(build_html(r, headline, details, source))
     with open(os.path.join(OUT_DIR, "analysis.json"), "w", encoding="utf-8") as fp:
-        json.dump(analysis_payload(r), fp, ensure_ascii=False, indent=2)
+        json.dump(payload, fp, ensure_ascii=False, indent=2)
     with open(STATE, "w", encoding="utf-8") as fp:
         json.dump({"current_month": str(month)}, fp, ensure_ascii=False)
     print(f"대시보드 생성 완료: 기준월 {month} → dashboard/index.html")
