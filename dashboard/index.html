@@ -1,174 +1,251 @@
 <!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Olist 재구매 모니터링 대시보드</title>
+<title>Olist 재구매 모니터링</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
 <style>
   :root {
-    --bg:#f5f5f3; --surface:#ffffff; --line:#e6e5e0;
-    --ink:#0b0b0b; --ink2:#52514e; --ink3:#8a8984;
-    --blue:#2a78d6; --orange:#eb6834;
-    --ok-bg:#eef3ee; --ok:#2f6b3a; --warn-bg:#fdecea; --warn:#b42318; --good-bg:#e8f0fb; --good:#1f5fae;
+    --navy:#003984; --navy2:#2E5FA8; --sky:#8FB0DE; --tint:#EEF3FA;
+    --ink:#121826; --ink2:#4A5568; --ink3:#8792A2; --rule:#D5DCE6; --rule2:#ECEFF4;
+    --warn:#C8102E; --warn-tint:#FCEDEF;
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink);
+  body { margin:0; background:#fff; color:var(--ink);
          font-family:Pretendard,'Malgun Gothic','Apple SD Gothic Neo',sans-serif; }
-  .wrap { max-width:1180px; margin:0 auto; padding:32px 20px 56px; }
-  header { display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; }
-  h1 { font-size:24px; margin:0; letter-spacing:-0.02em; }
-  .meta { color:var(--ink2); font-size:13px; line-height:1.6; text-align:right; }
-  .headline { margin:20px 0 16px; padding:18px 22px; background:var(--surface); border:1px solid var(--line);
-               border-left:4px solid var(--blue); border-radius:12px; font-size:17px; font-weight:600; line-height:1.6; }
-  .headline small { display:block; font-size:12px; font-weight:400; color:var(--ink3); margin-top:4px; }
-  .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-  .card { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
-  .label { font-size:13px; color:var(--ink2); }
-  .hint { color:var(--ink3); font-size:12px; }
-  .row { display:flex; align-items:center; gap:10px; margin:8px 0 4px; }
-  .row.sub { margin-top:10px; }
-  .value { font-size:28px; font-weight:700; letter-spacing:-0.02em; }
-  .value.small { font-size:20px; }
-  .badge { font-size:12px; font-weight:600; padding:3px 8px; border-radius:999px; white-space:nowrap; }
-  .badge.ok { background:var(--ok-bg); color:var(--ok); }
-  .badge.warn { background:var(--warn-bg); color:var(--warn); }
-  .badge.good { background:var(--good-bg); color:var(--good); }
-  .badge.na { background:#f0f0ee; color:var(--ink3); }
-  .delta { font-size:13px; color:var(--ink2); }
-  .note { font-size:11.5px; color:var(--ink3); margin-top:8px; line-height:1.55; }
-  h2 { font-size:17px; margin:36px 0 12px; letter-spacing:-0.01em; }
-  h2 span { font-size:12.5px; font-weight:400; color:var(--ink3); margin-left:8px; }
-  .panel { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 18px 10px; min-width:0; }
-  .panel h3 { font-size:14.5px; margin:0 0 2px; }
-  .panel .desc { font-size:12px; color:var(--ink3); margin-bottom:4px; }
+  .wrap { max-width:1200px; margin:0 auto; padding:0 28px; }
+
+  /* 상단 */
+  .top { background:var(--navy); color:#fff; }
+  .top .wrap { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap;
+               padding-top:26px; padding-bottom:22px; }
+  .eyebrow { font-size:11.5px; letter-spacing:.14em; opacity:.7; font-weight:600; }
+  .top h1 { font-size:26px; margin:6px 0 0; letter-spacing:-0.02em; font-weight:700; }
+  .top .sub { font-size:13px; opacity:.78; margin-top:6px; }
+  .asof { text-align:right; }
+  .asof .m { font-size:30px; font-weight:700; letter-spacing:-0.02em; line-height:1; }
+  .asof .m span { font-size:12px; font-weight:500; opacity:.7; margin-right:8px; letter-spacing:0; }
+  .asof .d { font-size:12px; opacity:.7; margin-top:8px; line-height:1.6; }
+
+  /* 이번 달 요약 */
+  .summary { display:grid; grid-template-columns:150px 1fr; gap:24px; padding:26px 0 24px;
+             border-bottom:1px solid var(--rule); }
+  .summary .lbl { font-size:12.5px; font-weight:700; color:var(--navy); padding-top:3px; }
+  .summary .txt { font-size:18px; font-weight:600; line-height:1.55; letter-spacing:-0.01em; }
+  .src { font-size:11.5px; color:var(--ink3); margin-top:6px; font-weight:400; }
+
+  /* KPI */
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); border-bottom:1px solid var(--rule); }
+  .kpi { padding:20px 22px 20px; border-top:3px solid var(--navy); border-right:1px solid var(--rule2); }
+  .kpi:last-child { border-right:0; }
+  .kpi.warn { border-top-color:var(--warn); background:linear-gradient(var(--warn-tint), #fff 70%); }
+  .k-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .k-label { font-size:13.5px; font-weight:700; }
+  .k-sub { font-size:11.5px; color:var(--ink3); margin-top:2px; }
+  .k-value { font-size:38px; font-weight:700; letter-spacing:-0.03em; margin:12px 0 4px; color:var(--ink);
+             font-variant-numeric:tabular-nums; }
+  .k-value small { font-size:18px; font-weight:600; margin-left:2px; color:var(--ink2); }
+  .kpi.warn .k-value { color:var(--warn); }
+  .k-delta { font-size:13px; font-weight:600; color:var(--ink2); }
+  .k-delta span { font-weight:400; color:var(--ink3); }
+  .k-note { font-size:11.5px; color:var(--ink3); margin-top:10px; line-height:1.6; }
+  .tagbox { font-size:11px; font-weight:700; padding:3px 8px; white-space:nowrap; letter-spacing:.02em; }
+  .tagbox.ok { color:var(--navy); border:1px solid var(--navy); }
+  .tagbox.warn { color:#fff; background:var(--warn); border:1px solid var(--warn); }
+
+  /* 섹션 */
+  .sec { margin-top:44px; }
+  .sec-head { display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+  .ptag { display:inline-block; background:var(--navy); color:#fff; transform:skewX(-18deg); padding:5px 16px; }
+  .ptag span { display:inline-block; transform:skewX(18deg); font-size:13px; font-weight:700; letter-spacing:-0.01em; }
+  .sec-head .q { font-size:13px; color:var(--ink2); }
+  .sec-head .line { flex:1; height:1px; background:var(--rule); }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+  .block { min-width:0; }
+  .block h3 { font-size:14.5px; margin:0; font-weight:700; padding-bottom:8px; border-bottom:1px solid var(--ink); }
+  .block .desc { font-size:12px; color:var(--ink3); margin:8px 0 2px; }
   .chart { width:100%; height:300px; }
-  .chart.tall { height:330px; }
-  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .stack { display:grid; gap:12px; }
-  .detail { margin:0; padding-left:18px; line-height:1.8; font-size:14px; }
-  .src { font-size:11.5px; color:var(--ink3); margin-top:8px; }
-  table { width:100%; border-collapse:collapse; font-size:13.5px; margin-top:8px; }
-  th { text-align:left; font-weight:600; color:var(--ink2); border-bottom:1px solid var(--line); padding:8px 6px; font-size:12.5px; }
-  td { border-bottom:1px solid #f0efeb; padding:9px 6px; }
+  .chart.tall { height:340px; }
+
+  .detail { list-style:none; margin:12px 0 0; padding:0; counter-reset:d; }
+  .detail li { counter-increment:d; position:relative; padding:10px 0 10px 34px; border-bottom:1px solid var(--rule2);
+               font-size:14px; line-height:1.65; }
+  .detail li::before { content:counter(d, decimal-leading-zero); position:absolute; left:0; top:10px;
+                       font-size:12px; font-weight:700; color:var(--navy); }
+
+  table { width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px; }
+  th { text-align:left; font-weight:600; color:var(--ink3); padding:10px 6px 8px; font-size:12px;
+       border-bottom:1px solid var(--rule); }
+  td { border-bottom:1px solid var(--rule2); padding:10px 6px; }
+  td.em { color:var(--navy); font-weight:700; }
   .num { text-align:right; font-variant-numeric:tabular-nums; }
-  footer { color:var(--ink3); font-size:12px; line-height:1.7; margin-top:32px; }
-  footer a { color:var(--ink2); }
-  @media (max-width:900px) { .cards { grid-template-columns:1fr 1fr; } .grid2 { grid-template-columns:1fr; } .meta { text-align:left; } }
+
+  /* 하단 */
+  .defs { margin-top:52px; padding:22px 0; border-top:1px solid var(--rule); font-size:12px; color:var(--ink2);
+          line-height:1.75; display:grid; grid-template-columns:150px 1fr; gap:6px 24px; }
+  .defs dt { font-weight:700; color:var(--navy); }
+  .defs dd { margin:0; }
+  .bottom { background:var(--navy); color:#fff; margin-top:12px; }
+  .bottom .wrap { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; padding-top:14px;
+                  padding-bottom:14px; font-size:12px; }
+  .bottom a { color:#fff; opacity:.85; }
+
+  @media (max-width:900px) {
+    .kpis { grid-template-columns:1fr 1fr; } .kpi:nth-child(2) { border-right:0; }
+    .grid2 { grid-template-columns:1fr; } .summary, .defs { grid-template-columns:1fr; }
+    .asof { text-align:left; }
+  }
 </style></head>
-<body><div class="wrap">
+<body>
 
-<header>
-  <h1>Olist 재구매 모니터링</h1>
-  <div class="meta">기준월 <b>2018-04</b> · 데이터 기준일 2018-04-30<br>자동 생성 2026-11-24 08:05</div>
-</header>
+<div class="top"><div class="wrap">
+  <div>
+    <div class="eyebrow">OLIST · MONTHLY MONITORING</div>
+    <h1>첫 구매 고객 재구매 모니터링</h1>
+    <div class="sub">재구매율과 배송 경험 지표를 매월 자동으로 계산하고 평소 범위와 비교</div>
+  </div>
+  <div class="asof">
+    <div class="m"><span>기준월</span>2018-04</div>
+    <div class="d">데이터 기준일 2018-04-30 · 자동 생성 2026-11-24 10:24</div>
+  </div>
+</div></div>
 
-<div class="headline">주의: 예상일 초과 도착 비율과 1~2점 리뷰 비율이 평소 범위를 초과하여 상승함<small>AI 요약 · 수치 검증 완료 (gemini-3.5-flash)</small></div>
-<section class="cards">
-<div class="card">
-  <div class="label">첫 구매 고객 재구매율 <span class="hint">2018-03 배송 고객</span></div>
-  <div class="row"><div class="value">0.42%</div><span class="badge ok">● 정상</span></div>
-  <span class="delta">▲ 0.03%p 전월 대비</span>
-  <div class="note">6,497명 · 남동부 0.50%<br>평소 범위 0.11~1.10%</div>
+<div class="wrap">
+
+<section class="summary">
+  <div class="lbl">이번 달 요약</div>
+  <div class="txt">주의: 2018년 4월 예상일 초과 도착 비율과 1~2점 리뷰 비율이 평소 범위를 초과함.<div class="src">AI 요약 · 수치 검증 완료 (gemini-3.5-flash)</div></div>
+</section>
+
+<section class="kpis">
+<div class="kpi">
+  <div class="k-head"><div class="k-label">첫 구매 고객 재구매율</div><span class="tagbox ok">정상</span></div>
+  <div class="k-sub">2018-03 배송 고객</div>
+  <div class="k-value">0.42<small>%</small></div>
+  <div class="k-delta">▲ 0.03%p <span>전월 대비</span></div>
+  <div class="k-note">6,497명 · 남동부 0.50%<br>평소 범위 0.11~1.10%</div>
 </div>
-<div class="card">
-  <div class="label">예상일 초과 도착 비율</div>
-  <div class="row"><div class="value">17.1%</div><span class="badge warn">! 주의</span></div>
-  <span class="delta">▲ 3.91%p 전월 대비</span>
-  <div class="note">2018-04 배송 완료 7,850건<br>평소 범위 0.3~14.7% · 범위보다 높음</div>
+<div class="kpi warn">
+  <div class="k-head"><div class="k-label">예상일 초과 도착 비율</div><span class="tagbox warn">주의</span></div>
+  <div class="k-sub">2018-04 배송 완료</div>
+  <div class="k-value">17.1<small>%</small></div>
+  <div class="k-delta">▲ 3.91%p <span>전월 대비</span></div>
+  <div class="k-note">배송 완료 7,850건<br>평소 범위 0.3~14.7% · 범위보다 높음</div>
 </div>
-<div class="card">
-  <div class="label">1~2점 리뷰 비율</div>
-  <div class="row"><div class="value">20.5%</div><span class="badge warn">! 주의</span></div>
-  <span class="delta">▲ 2.53%p 전월 대비</span>
-  <div class="note">2018-04 배송 완료 주문 중 리뷰 7,785건<br>평소 범위 8.0~19.6% · 범위보다 높음</div>
+<div class="kpi warn">
+  <div class="k-head"><div class="k-label">1~2점 리뷰 비율</div><span class="tagbox warn">주의</span></div>
+  <div class="k-sub">2018-04 배송 완료</div>
+  <div class="k-value">20.5<small>%</small></div>
+  <div class="k-delta">▲ 2.53%p <span>전월 대비</span></div>
+  <div class="k-note">리뷰 7,785건<br>평소 범위 8.0~19.6% · 범위보다 높음</div>
 </div>
-<div class="card">
-  <div class="label">주문 수 · 거래액</div>
-  <div class="row"><div class="value">6,939건</div></div>
-  <span class="delta">▼ 3.8% 전월 대비</span>
-  <div class="row sub"><div class="value small">99.4만 헤알</div></div>
-  <span class="delta">▲ 1.3% 전월 대비</span>
-  <div class="note">2018-04 주문 기준 · 거래액은 배송비 제외</div>
+<div class="kpi">
+  <div class="k-head"><div class="k-label">주문 수</div></div>
+  <div class="k-sub">2018-04 주문</div>
+  <div class="k-value">6,939<small>건</small></div>
+  <div class="k-delta">▼ 3.8% <span>전월 대비</span></div>
+  <div class="k-note">거래액 99.4만 헤알 (전월 대비 +1.3%)<br>거래액은 배송비 제외</div>
 </div></section>
 
-<div class="panel" style="margin-top:12px">
+<section class="block" style="margin-top:30px">
   <h3>첫 구매 고객 재구매율 추이</h3>
-  <div class="desc">배송 완료월별 · 배송 후 30일 이내 재구매 · 띠는 전국 기준 평소 범위</div>
+  <div class="desc">배송 완료월별 · 배송 후 30일 이내 재구매 · 음영은 전국 기준 평소 범위</div>
   <div id="c-rep" class="chart tall"></div>
-</div>
+</section>
 
-<h2>이번 달 변화 상세<span>무엇이 변했고, 어디서 변했나</span></h2>
-<div class="grid2">
-  <div class="panel"><h3>해석</h3><ul class="detail"><li>2018년 4월 예상일 초과 도착 비율은 17.07%(전월 대비 3.91%p 상승), 1~2점 리뷰 비율은 20.48%(전월 대비 2.53%p 상승)로 평소 범위를 벗어나 주의 판정되었으며, 2018년 3월 배송 고객 기준 첫 구매 고객 재구매율은 0.42%로 정상 범위 안임.</li><li>예상일 초과 도착 비율의 상승은 RJ(기여도 1.1%p), MG(기여도 0.9%p), BA(기여도 0.56%p) 등의 지역 변화와 함께 나타남.</li><li>과거 분석에서 배송 지연 및 1~2점 리뷰 증가가 낮은 재구매율과 관련이 관측된 바 있어, 2018년 3월 배송 고객 기준 첫 구매 고객 재구매율 등의 추이에 대해 모니터링이 필요함.</li></ul><div class="src">AI 요약 · 수치 검증 완료 (gemini-3.5-flash)</div></div>
-  <div class="panel"><h3>예상일 초과 도착 비율 변화 기여 Top 5 (주)</h3><table>
-<thead><tr><th>주</th><th>권역</th><th class='num'>배송 완료</th><th class='num'>전월</th>
-<th class='num'>이번 달</th><th class='num'>전체 변화 기여</th></tr></thead><tbody><tr><td>RJ</td><td>남동부</td><td class='num'>1,062</td><td class='num'>30.1%</td><td class='num'><b>32.4%</b></td><td class='num'>+1.10%p</td></tr><tr><td>MG</td><td>남동부</td><td class='num'>958</td><td class='num'>11.0%</td><td class='num'><b>17.4%</b></td><td class='num'>+0.90%p</td></tr><tr><td>BA</td><td>북동부</td><td class='num'>230</td><td class='num'>14.2%</td><td class='num'><b>34.8%</b></td><td class='num'>+0.56%p</td></tr><tr><td>ES</td><td>남동부</td><td class='num'>151</td><td class='num'>15.2%</td><td class='num'><b>36.4%</b></td><td class='num'>+0.42%p</td></tr><tr><td>CE</td><td>북동부</td><td class='num'>112</td><td class='num'>27.8%</td><td class='num'><b>50.0%</b></td><td class='num'>+0.42%p</td></tr></tbody></table>
-<p class='note'>전체 예상일 초과 도착 비율 변화 +3.91%p를 주별로 나눈 값 · 배송 완료 50건 이상인 주만 표시</p></div>
-</div>
-
-<h2>배송 경험 추이<span>배송 완료월별 · 띠는 평소 범위</span></h2>
-<div class="grid2">
-  <div class="panel"><h3>예상일 초과 도착 비율</h3><div id="c-late" class="chart"></div></div>
-  <div class="panel"><h3>1~2점 리뷰 비율</h3><div id="c-low" class="chart"></div></div>
-</div>
-
-<h2>권역 비교<span>최근 6개월과 그 전 기간 비교</span></h2>
-<div class="panel"><h3>권역별 첫 구매 고객 재구매율</h3>
-  <div class="desc">배송 완료월 기준 · 한 달씩 보면 권역별 고객 수가 적어 6개월씩 묶음</div>
-  <div id="c-region" class="chart"></div></div>
-
-<h2>참고<span>이번 달과 평소 비교</span></h2>
-<div class="stack">
-  <div class="panel"><h3>예상 도착일 대비 도착 시점별 1~2점 리뷰 비율</h3>
-    <div class="desc">배송 완료월 기준 · 늦게 도착한 주문에 대한 불만이 평소보다 커졌는지 확인</div>
-    <div id="c-band" class="chart"></div></div>
-  <div class="panel"><h3>주문 이후 퍼널</h3>
-    <div class="desc">전월 주문 기준 · 주문 대비 비율 · 이번 달 주문은 아직 배송 중인 주문이 많아 한 달 전 주문으로 비교</div>
-    <div id="c-funnel" class="chart" style="height:280px"></div></div>
+<section class="sec">
+  <div class="sec-head"><div class="ptag"><span>이번 달 변화</span></div><div class="q">무엇이 변했고, 어디서 변했나</div><div class="line"></div></div>
   <div class="grid2">
-    <div class="panel"><h3>월별 주문 수</h3><div id="c-orders" class="chart"></div></div>
-    <div class="panel"><h3>월별 거래액 (만 헤알)</h3><div id="c-gmv" class="chart"></div></div>
+    <div class="block"><h3>해석</h3><ul class="detail"><li>2018년 4월 예상일 초과 도착 비율(17.07%, +3.91%p)과 1~2점 리뷰 비율(20.48%, +2.53%p)이 평소 범위를 벗어나 주의 상태로 전환됨.</li><li>전체 예상일 초과 도착 비율 상승은 RJ(1.1%p), MG(0.9%p), BA(0.56%p), ES(0.42%p), CE(0.42%p) 주 순으로 높은 기여를 보임.</li><li>과거 관측 데이터 기준 배송 지연은 1~2점 리뷰 비율 상승 및 재구매율 감소와 관련이 있었으며, 2018년 3월 배송 고객 기준 첫 구매 고객 재구매율은 0.42%로 정상 범위를 유지 중이나 향후 영향 모니터링이 필요함.</li></ul><div class="src">AI 요약 · 수치 검증 완료 (gemini-3.5-flash)</div></div>
+    <div class="block"><h3>예상일 초과 도착 비율 변화 기여 상위 5개 주</h3><table>
+<thead><tr><th>주</th><th>권역</th><th class='num'>배송 완료</th><th class='num'>전월</th>
+<th class='num'>이번 달</th><th class='num'>변화 기여</th></tr></thead><tbody><tr><td><b>RJ</b></td><td>남동부</td><td class='num'>1,062</td><td class='num'>30.1%</td><td class='num'>32.4%</td><td class='num em'>+1.10%p</td></tr><tr><td><b>MG</b></td><td>남동부</td><td class='num'>958</td><td class='num'>11.0%</td><td class='num'>17.4%</td><td class='num em'>+0.90%p</td></tr><tr><td><b>BA</b></td><td>북동부</td><td class='num'>230</td><td class='num'>14.2%</td><td class='num'>34.8%</td><td class='num em'>+0.56%p</td></tr><tr><td><b>ES</b></td><td>남동부</td><td class='num'>151</td><td class='num'>15.2%</td><td class='num'>36.4%</td><td class='num em'>+0.42%p</td></tr><tr><td><b>CE</b></td><td>북동부</td><td class='num'>112</td><td class='num'>27.8%</td><td class='num'>50.0%</td><td class='num em'>+0.42%p</td></tr></tbody></table>
+<p class='k-note'>전체 변화 +3.91%p를 주별로 나눈 값 · 배송 완료 50건 이상인 주만 표시</p></div>
   </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head"><div class="ptag"><span>배송 경험</span></div><div class="q">배송 완료월별 · 음영은 평소 범위</div><div class="line"></div></div>
+  <div class="grid2">
+    <div class="block"><h3>예상일 초과 도착 비율</h3><div id="c-late" class="chart"></div></div>
+    <div class="block"><h3>1~2점 리뷰 비율</h3><div id="c-low" class="chart"></div></div>
+  </div>
+</section>
+
+<section class="sec">
+  <div class="sec-head"><div class="ptag"><span>권역 비교</span></div><div class="q">최근 6개월과 그 전 기간 비교</div><div class="line"></div></div>
+  <div class="block"><h3>권역별 첫 구매 고객 재구매율</h3>
+    <div class="desc">배송 완료월 기준 · 한 달씩 보면 권역별 고객 수가 적어 6개월씩 묶음</div>
+    <div id="c-region" class="chart"></div></div>
+</section>
+
+<section class="sec">
+  <div class="sec-head"><div class="ptag"><span>참고</span></div><div class="q">이번 달과 평소 비교</div><div class="line"></div></div>
+  <div class="grid2">
+    <div class="block"><h3>예상 도착일 대비 도착 시점별 1~2점 리뷰 비율</h3>
+      <div class="desc">늦게 도착한 주문에 대한 불만이 평소보다 커졌는지 확인</div>
+      <div id="c-band" class="chart"></div></div>
+    <div class="block"><h3>주문 이후 퍼널</h3>
+      <div class="desc">전월 주문 기준 · 이번 달 주문은 아직 배송 중인 주문이 많아 한 달 전 주문으로 비교</div>
+      <div id="c-funnel" class="chart"></div></div>
+  </div>
+  <div class="grid2" style="margin-top:28px">
+    <div class="block"><h3>월별 주문 수</h3><div id="c-orders" class="chart"></div></div>
+    <div class="block"><h3>월별 거래액 (만 헤알)</h3><div id="c-gmv" class="chart"></div></div>
+  </div>
+</section>
+
+<dl class="defs">
+  <dt>첫 구매 고객 재구매율</dt>
+  <dd>첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율(첫 구매와 같은 날 주문 제외). 배송 후 30일이 지나야 확정되므로 확정된 배송 달까지만 표시</dd>
+  <dt>예상일 초과 도착 비율</dt>
+  <dd>해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율</dd>
+  <dt>1~2점 리뷰 비율</dt>
+  <dd>해당 월 배송 완료 주문 중 리뷰가 있는 주문에서 1~2점(주문별 평균) 비율</dd>
+  <dt>거래액</dt>
+  <dd>상품 가격 합계(배송비 제외, 취소·상품 없음 주문 제외)</dd>
+  <dt>평소 범위</dt>
+  <dd>최근 6개월 평균 ± 2 × 표준편차. 이 범위를 나쁜 쪽으로 벗어나면 주의</dd>
+  <dt>데이터</dt>
+  <dd>Brazilian E-Commerce Public Dataset by Olist (Kaggle). 2017.01~2018.08 과거 데이터를 기준월 단위로 공급해 운영 환경을 시뮬레이션.
+      배송 완료는 도착일이 기준일 이전인지로 판단. 리뷰 작성일 정보가 없어 기준일 이후 작성된 리뷰도 포함될 수 있음</dd>
+</dl>
 </div>
 
-<footer>
-  <b>지표 정의</b> · 첫 구매 고객 재구매율: 첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율(첫 구매와 같은 날 주문 제외),
-  재구매 여부는 배송 후 30일이 지나야 확정되므로 확정된 배송 달까지만 표시 · 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율 ·
-  1~2점 리뷰 비율: 해당 월 배송 완료 주문 중 리뷰가 있는 주문에서 1~2점(주문별 평균) 비율 ·
-  거래액: 상품 가격 합계(배송비 제외, 취소·상품 없음 주문 제외)<br>
-  <b>평소 범위</b> · 최근 6개월 평균 ± 2 × 표준편차. 이 범위를 나쁜 쪽으로 벗어나면 주의<br>
-  <b>데이터</b> · Brazilian E-Commerce Public Dataset by Olist (Kaggle). 2017.01~2018.08 과거 데이터를 기준월 단위로 공급해 운영 환경을 시뮬레이션.
-  배송 완료는 도착일이 기준일 이전인지로 판단. 리뷰 작성일 정보가 없어 기준일 이후 작성된 리뷰도 포함될 수 있음<br>
-  분석 상세 · <a href="https://github.com/sooy1016/olist-repurchase-analysis">github.com/sooy1016/olist-repurchase-analysis</a>
-</footer>
-</div>
+<div class="bottom"><div class="wrap">
+  <div>Olist 재구매 분석 · 조수영</div>
+  <a href="https://github.com/sooy1016/olist-repurchase-analysis">github.com/sooy1016/olist-repurchase-analysis</a>
+</div></div>
 
 <script>
 const D = {"rep": {"x": ["2017.01", "2017.02", "2017.03", "2017.04", "2017.05", "2017.06", "2017.07", "2017.08", "2017.09", "2017.10", "2017.11", "2017.12", "2018.01", "2018.02", "2018.03"], "all": [0.382, 0.681, 0.299, 0.554, 0.736, 0.449, 0.507, 0.554, 0.783, 0.671, 0.974, 0.359, 0.437, 0.39, 0.416], "se": [0.518, 0.749, 0.372, 0.748, 0.748, 0.492, 0.637, 0.505, 0.635, 0.685, 1.004, 0.467, 0.537, 0.383, 0.499], "lo": [null, null, null, null, 0.136, 0.155, 0.174, 0.22, 0.23, 0.332, 0.35, 0.263, 0.206, 0.174, 0.107], "hi": [null, null, null, null, 0.822, 0.906, 0.86, 0.855, 0.804, 0.862, 0.883, 1.049, 1.077, 1.085, 1.098]}, "late": {"x": ["2017.01", "2017.02", "2017.03", "2017.04", "2017.05", "2017.06", "2017.07", "2017.08", "2017.09", "2017.10", "2017.11", "2017.12", "2018.01", "2018.02", "2018.03", "2018.04"], "y": [0.0, 0.07, 2.15, 4.71, 4.91, 2.89, 2.6, 2.28, 3.88, 4.07, 4.05, 8.76, 9.43, 5.52, 13.16, 17.07], "lo": [null, null, null, null, 0.0, 0.0, 0.0, 0.0, 0.8, 1.31, 1.42, 1.7, 0.0, 0.0, 0.93, 0.29], "hi": [null, null, null, null, 6.17, 7.14, 6.75, 6.46, 5.71, 5.78, 5.46, 4.89, 8.93, 11.29, 10.98, 14.7]}, "low": {"x": ["2017.01", "2017.02", "2017.03", "2017.04", "2017.05", "2017.06", "2017.07", "2017.08", "2017.09", "2017.10", "2017.11", "2017.12", "2018.01", "2018.02", "2018.03", "2018.04"], "y": [8.57, 9.08, 9.91, 12.25, 11.82, 10.3, 9.75, 9.61, 9.73, 10.51, 10.97, 13.99, 16.1, 13.34, 17.95, 20.48], "lo": [null, null, null, null, 6.7, 7.05, 7.39, 8.03, 8.33, 8.25, 8.62, 9.07, 7.42, 6.55, 7.56, 8.04], "hi": [null, null, null, null, 13.21, 13.61, 13.26, 13.01, 12.89, 12.91, 11.95, 11.22, 14.1, 17.09, 17.33, 19.58]}, "region": {"x": ["남동부", "남부", "중서부", "북동부", "북부"], "recent": [0.569, 0.365, 0.528, 0.377, 0.0], "before": [0.617, 0.624, 0.535, 0.491, 0.922], "recent_n": [23539, 4925, 2085, 3183, 610], "before_n": [13292, 3044, 1122, 2035, 434], "recent_label": "최근 6개월 (2017.10~2018.03)", "before_label": "그 전 6개월 (2017.04~2017.09)"}, "band": {"x": ["15일+ 일찍", "8~14일 일찍", "1~7일 일찍", "당일", "1~3일 늦음", "4~7일 늦음", "8~14일 늦음", "15일+ 늦음"], "cur": [10.3, 9.0, 11.2, 15.7, 36.7, 71.3, 85.6, 81.6], "prev": [9.0, 9.0, 11.7, 14.7, 34.5, 69.3, 80.7, 78.4], "cur_n": [2297, 2669, 1388, 121, 245, 317, 362, 386], "prev_n": [19344, 23309, 8995, 654, 1086, 998, 760, 629], "cur_label": "2018.04", "prev_label": "직전 12개월 (2017.04~2018.03)"}, "funnel": {"x": ["주문", "배송 완료", "예상일 안에 도착", "리뷰 4점 이상"], "cur": [100.0, 94.5, 78.5, 63.1], "base": [100.0, 94.5, 88.2, 70.7], "cur_n": [7211, 6816, 5664, 4548], "cur_label": "2018.03", "base_label": "2017.12~2018.02"}, "monthly": {"x": ["2017.01", "2017.02", "2017.03", "2017.04", "2017.05", "2017.06", "2017.07", "2017.08", "2017.09", "2017.10", "2017.11", "2017.12", "2018.01", "2018.02", "2018.03", "2018.04"], "orders": [798, 1768, 2682, 2404, 3699, 3245, 4026, 4331, 4284, 4631, 7543, 5673, 7269, 6728, 7211, 6939], "gmv": [12.0, 24.3, 36.8, 35.4, 50.3, 43.0, 49.2, 56.8, 62.1, 66.0, 100.4, 74.2, 94.5, 83.8, 98.1, 99.4]}};
-const C = { blue:'#2a78d6', orange:'#eb6834', gray:'#c9c8c1', band:'rgba(42,120,214,0.12)',
-            ink:'#0b0b0b', ink2:'#52514e', ink3:'#8a8984', grid:'#eeede9' };
+const C = { navy:'#003984', sky:'#8FB0DE', gray:'#C9D1DC', band:'rgba(0,57,132,0.08)',
+            ink:'#121826', ink2:'#4A5568', ink3:'#8792A2', grid:'#ECEFF4' };
 const FONT = "Pretendard, 'Malgun Gothic', sans-serif";
 const charts = [];
 function mk(id, opt) {
   const c = echarts.init(document.getElementById(id), null, { renderer:'svg' });
   c.setOption(Object.assign({
-    textStyle:{ fontFamily:FONT, color:C.ink2 }, animationDuration:600,
-    grid:{ left:8, right:16, top:36, bottom:8, containLabel:true },
-    tooltip:{ trigger:'axis', backgroundColor:'#fff', borderColor:'#e6e5e0', textStyle:{ color:C.ink, fontSize:12 },
-              axisPointer:{ type:'line', lineStyle:{ color:'#bbb' } } },
+    textStyle:{ fontFamily:FONT, color:C.ink2 }, animationDuration:500,
+    grid:{ left:4, right:14, top:40, bottom:6, containLabel:true },
+    tooltip:{ trigger:'axis', backgroundColor:'#fff', borderColor:C.navy, borderWidth:1, borderRadius:0,
+              textStyle:{ color:C.ink, fontSize:12 }, axisPointer:{ type:'line', lineStyle:{ color:'#9AA6B8' } } },
   }, opt));
   charts.push(c);
 }
+const legend = (data) => ({ data, left:0, top:0, icon:'rect', itemWidth:12, itemHeight:4, itemGap:16,
+                            textStyle:{ color:C.ink2, fontSize:12 } });
 const xCat = (data, extra={}) => Object.assign({ type:'category', data, boundaryGap:true,
-  axisLine:{ show:false }, axisTick:{ show:false }, axisLabel:{ color:C.ink3, fontSize:11 } }, extra);
+  axisLine:{ lineStyle:{ color:C.ink } }, axisTick:{ show:false }, axisLabel:{ color:C.ink3, fontSize:11 } }, extra);
 const yVal = (fmt) => ({ type:'value', splitLine:{ lineStyle:{ color:C.grid } },
   axisLabel:{ color:C.ink3, fontSize:11, formatter:fmt } });
-const lineS = (name, data, color) => ({ name, type:'line', data, symbol:'circle', symbolSize:7, connectNulls:false,
-  lineStyle:{ width:2.2, color }, itemStyle:{ color, borderColor:'#fff', borderWidth:2 } });
+const lineS = (name, data, color, w=2) => ({ name, type:'line', data, symbol:'circle', symbolSize:6, connectNulls:false,
+  lineStyle:{ width:w, color }, itemStyle:{ color, borderColor:'#fff', borderWidth:1.5 } });
 const bandS = (lo, hi) => ([
   { name:'_lo', type:'line', data:lo, stack:'band', symbol:'none', lineStyle:{ opacity:0 }, tooltip:{ show:false }, silent:true },
   { name:'평소 범위', type:'line', data:hi.map((h,i)=> h==null||lo[i]==null ? null : +(h-lo[i]).toFixed(4)), stack:'band',
-     symbol:'none', lineStyle:{ opacity:0 }, itemStyle:{ color:'rgba(42,120,214,0.25)' }, areaStyle:{ color:C.band }, tooltip:{ show:false }, silent:true }
+    symbol:'none', lineStyle:{ opacity:0 }, itemStyle:{ color:'rgba(0,57,132,0.18)' }, areaStyle:{ color:C.band }, tooltip:{ show:false }, silent:true }
 ]);
 const pctTip = (digits, extra) => (ps) => {
   const rows = ps.filter(p => !p.seriesName.startsWith('_') && p.seriesName!=='평소 범위' && p.value!=null)
@@ -176,83 +253,75 @@ const pctTip = (digits, extra) => (ps) => {
   const i = ps[0].dataIndex; const ex = extra ? extra(i) : '';
   return `<b>${ps[0].axisValue}</b><br>` + rows.join('<br>') + ex;
 };
+const rangeTip = (s, d) => i => (s.lo[i]!=null ? `<br><span style="color:#8792A2">평소 범위 ${s.lo[i].toFixed(d)}~${s.hi[i].toFixed(d)}%</span>` : '');
 
-// 재구매율 추이
 mk('c-rep', {
-  legend:{ data:['전국','남동부','평소 범위'], right:0, top:0, icon:'roundRect', itemWidth:14, itemHeight:4,
-           textStyle:{ color:C.ink2, fontSize:12 } },
+  legend:legend(['전국','남동부','평소 범위']),
   xAxis:xCat(D.rep.x), yAxis:yVal('{value}%'),
-  tooltip:{ trigger:'axis', formatter:pctTip(2, i => (D.rep.lo[i]!=null ? `<br><span style="color:#8a8984">평소 범위 ${D.rep.lo[i].toFixed(2)}~${D.rep.hi[i].toFixed(2)}%</span>` : '')) },
-  series:[...bandS(D.rep.lo, D.rep.hi), lineS('전국', D.rep.all, C.blue), lineS('남동부', D.rep.se, C.orange)]
+  tooltip:{ trigger:'axis', formatter:pctTip(2, rangeTip(D.rep, 2)) },
+  series:[...bandS(D.rep.lo, D.rep.hi), lineS('전국', D.rep.all, C.navy, 2.4), lineS('남동부', D.rep.se, C.sky)]
 });
 
-// 배송 경험
 for (const [id, key, name] of [['c-late','late','예상일 초과 도착 비율'], ['c-low','low','1~2점 리뷰 비율']]) {
   const s = D[key];
   mk(id, {
+    legend:legend([name,'평소 범위']),
     xAxis:xCat(s.x), yAxis:yVal('{value}%'),
-    tooltip:{ trigger:'axis', formatter:pctTip(1, i => (s.lo[i]!=null ? `<br><span style="color:#8a8984">평소 범위 ${s.lo[i].toFixed(1)}~${s.hi[i].toFixed(1)}%</span>` : '')) },
-    series:[...bandS(s.lo, s.hi), lineS(name, s.y, C.blue)]
+    tooltip:{ trigger:'axis', formatter:pctTip(1, rangeTip(s, 1)) },
+    series:[...bandS(s.lo, s.hi), lineS(name, s.y, C.navy, 2.4)]
   });
 }
 
-// 묶음 막대 공통 (이번 vs 평소)
-const pair = (id, x, cur, prev, curName, prevName, digits, curN, prevN, nUnit, labelColor) => mk(id, {
-  legend:{ data:[curName, prevName], right:0, top:0, icon:'roundRect', itemWidth:12, itemHeight:8,
-           textStyle:{ color:C.ink2, fontSize:12 } },
-  grid:{ left:8, right:16, top:40, bottom:8, containLabel:true },
-  xAxis:xCat(x, { axisLabel:{ color:C.ink2, fontSize:11.5 } }), yAxis:yVal('{value}%'),
-  tooltip:{ trigger:'axis', axisPointer:{ type:'shadow' }, formatter:ps => {
+const pair = (id, x, cur, prev, curName, prevName, digits, curN, prevN, nUnit) => mk(id, {
+  legend:Object.assign(legend([curName, prevName]), { itemHeight:8 }),
+  xAxis:xCat(x, { axisLabel:{ color:C.ink2, fontSize:11.5, interval:0, lineHeight:15, formatter:v => v.replace(' ', '\n') } }),
+  yAxis:yVal('{value}%'),
+  tooltip:{ trigger:'axis', axisPointer:{ type:'shadow', shadowStyle:{ color:'rgba(0,57,132,0.05)' } }, formatter:ps => {
     const i = ps[0].dataIndex;
     return `<b>${ps[0].name}</b><br>` + ps.filter(p=>p.value!=null).map(p => {
       const n = p.seriesIndex===0 ? curN[i] : prevN[i];
-      return `${p.marker}${p.seriesName} <b>${p.value.toFixed(digits)}%</b> <span style="color:#8a8984">(${n.toLocaleString()}${nUnit})</span>`;
+      return `${p.marker}${p.seriesName} <b>${p.value.toFixed(digits)}%</b> <span style="color:#8792A2">(${n.toLocaleString()}${nUnit})</span>`;
     }).join('<br>');
   } },
   series:[
-    { name:curName, type:'bar', data:cur, barMaxWidth:30, barGap:'15%', itemStyle:{ color:C.blue, borderRadius:[4,4,0,0] },
-       label:{ show:true, position:'top', color:C.ink, fontSize:11.5, formatter:p => p.value==null ? '' : p.value.toFixed(digits)+'%' } },
-    { name:prevName, type:'bar', data:prev, barMaxWidth:30, itemStyle:{ color:C.gray, borderRadius:[4,4,0,0] } }
+    { name:curName, type:'bar', data:cur, barMaxWidth:28, barGap:'12%', itemStyle:{ color:C.navy },
+      label:{ show:true, position:'top', color:C.ink, fontSize:11.5, fontWeight:600, formatter:p => p.value==null ? '' : p.value.toFixed(digits)+'%' } },
+    { name:prevName, type:'bar', data:prev, barMaxWidth:28, itemStyle:{ color:C.gray } }
   ]
 });
 
-// 권역별 재구매율: 최근 6개월 vs 그 전 6개월
 pair('c-region', D.region.x, D.region.recent, D.region.before,
      D.region.recent_label, D.region.before_label, 2, D.region.recent_n, D.region.before_n, '명');
-
-// 예상 도착일 대비 1~2점 리뷰 비율: 이번 달 vs 직전 12개월
 pair('c-band', D.band.x, D.band.cur, D.band.prev,
      `이번 달 (${D.band.cur_label})`, D.band.prev_label, 1, D.band.cur_n, D.band.prev_n, '건');
 
-// 퍼널: 전월 주문 vs 직전 3개월 평균 (주문 대비 비율)
 mk('c-funnel', {
-  legend:{ data:[`${D.funnel.cur_label} 주문`, `직전 3개월 평균 (${D.funnel.base_label})`], right:0, top:0, icon:'roundRect',
-           itemWidth:12, itemHeight:8, textStyle:{ color:C.ink2, fontSize:12 } },
-  grid:{ left:8, right:70, top:36, bottom:8, containLabel:true },
+  legend:Object.assign(legend([`${D.funnel.cur_label} 주문`, `직전 3개월 평균 (${D.funnel.base_label})`]), { itemHeight:8 }),
+  grid:{ left:4, right:60, top:40, bottom:6, containLabel:true },
   xAxis:{ type:'value', show:false, max:100 },
-  yAxis:{ type:'category', data:D.funnel.x, inverse:true, axisLine:{ show:false }, axisTick:{ show:false },
-          axisLabel:{ color:C.ink2, fontSize:12.5 } },
-  tooltip:{ trigger:'axis', axisPointer:{ type:'shadow' }, formatter:ps => {
+  yAxis:{ type:'category', data:D.funnel.x, inverse:true, axisLine:{ lineStyle:{ color:C.ink } }, axisTick:{ show:false },
+          axisLabel:{ color:C.ink2, fontSize:12 } },
+  tooltip:{ trigger:'axis', axisPointer:{ type:'shadow', shadowStyle:{ color:'rgba(0,57,132,0.05)' } }, formatter:ps => {
     const i = ps[0].dataIndex;
     return `<b>${ps[0].name}</b><br>` + ps.filter(p=>p.value!=null).map(p =>
-      `${p.marker}${p.seriesName} <b>${p.value.toFixed(1)}%</b>` + (p.seriesIndex===0 ? ` <span style="color:#8a8984">(${D.funnel.cur_n[i].toLocaleString()}건)</span>` : '')).join('<br>');
+      `${p.marker}${p.seriesName} <b>${p.value.toFixed(1)}%</b>` + (p.seriesIndex===0 ? ` <span style="color:#8792A2">(${D.funnel.cur_n[i].toLocaleString()}건)</span>` : '')).join('<br>');
   } },
   series:[
-    { name:`${D.funnel.cur_label} 주문`, type:'bar', data:D.funnel.cur, barWidth:16, itemStyle:{ color:C.blue, borderRadius:[0,4,4,0] },
-       label:{ show:true, position:'right', color:C.ink, fontSize:12, formatter:p => p.value.toFixed(1)+'%' } },
-    { name:`직전 3개월 평균 (${D.funnel.base_label})`, type:'bar', data:D.funnel.base, barWidth:16, itemStyle:{ color:C.gray, borderRadius:[0,4,4,0] },
-       label:{ show:true, position:'right', color:C.ink3, fontSize:11.5, formatter:p => p.value==null ? '' : p.value.toFixed(1)+'%' } }
+    { name:`${D.funnel.cur_label} 주문`, type:'bar', data:D.funnel.cur, barWidth:14, itemStyle:{ color:C.navy },
+      label:{ show:true, position:'right', color:C.ink, fontSize:11.5, fontWeight:600, formatter:p => p.value.toFixed(1)+'%' } },
+    { name:`직전 3개월 평균 (${D.funnel.base_label})`, type:'bar', data:D.funnel.base, barWidth:14, itemStyle:{ color:C.gray },
+      label:{ show:true, position:'right', color:C.ink3, fontSize:11, formatter:p => p.value==null ? '' : p.value.toFixed(1)+'%' } }
   ]
 });
 
-// 월별 주문 수·거래액 (기준월 강조)
 for (const [id, key, unit] of [['c-orders','orders','건'], ['c-gmv','gmv','만 헤알']]) {
   const ys = D.monthly[key], last = ys.length - 1;
   mk(id, {
+    grid:{ left:4, right:14, top:16, bottom:6, containLabel:true },
     xAxis:xCat(D.monthly.x), yAxis:yVal(v => v.toLocaleString()),
-    tooltip:{ trigger:'axis', axisPointer:{ type:'shadow' }, formatter:ps => `<b>${ps[0].name}</b><br>${ps[0].value.toLocaleString()}${unit}` },
-    series:[{ type:'bar', data:ys.map((v,i)=>({ value:v, itemStyle:{ color: i===last ? C.blue : C.gray } })),
-              barMaxWidth:22, itemStyle:{ borderRadius:[3,3,0,0] } }]
+    tooltip:{ trigger:'axis', axisPointer:{ type:'shadow', shadowStyle:{ color:'rgba(0,57,132,0.05)' } },
+              formatter:ps => `<b>${ps[0].name}</b><br>${ps[0].value.toLocaleString()}${unit}` },
+    series:[{ type:'bar', data:ys.map((v,i)=>({ value:v, itemStyle:{ color: i===last ? C.navy : C.gray } })), barMaxWidth:20 }]
   });
 }
 window.addEventListener('resize', () => charts.forEach(c => c.resize()));
