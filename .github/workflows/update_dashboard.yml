@@ -1,7 +1,7 @@
 # 대시보드 자동 갱신 · 게시
 # - 실제 운영 가정: 매월 1일, 전월 데이터로 갱신
 # - 시연: 매주 월요일 실행할 때마다 한 달치 데이터가 새로 들어온 것으로 보고 기준월을 한 달 넘김
-# - build(생성·저장·업로드)와 deploy(게시)를 나눈 GitHub Pages 기본 구성
+# - build(생성·저장·업로드) → deploy(게시) → notify(분석가에게 Slack 검토 요청)
 name: Update dashboard
 
 on:
@@ -72,7 +72,24 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
+    outputs:
+      page_url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: GitHub Pages 게시
         id: deploy
         uses: actions/deploy-pages@v5
+
+  notify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 최신 저장소 내려받기
+        uses: actions/checkout@v5
+        with:
+          ref: main                # build 단계에서 저장한 최신 결과 포함
+
+      - name: 분석가에게 Slack 검토 요청
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DASHBOARD_URL: ${{ needs.deploy.outputs.page_url }}
+        run: python python/notify_slack.py
