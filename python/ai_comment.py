@@ -18,8 +18,9 @@ import urllib.request
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 FALLBACK_MODEL = "gemini-3.1-flash-lite"                            # 가볍고 빠른 무료 모델 (기본 모델이 느리거나 혼잡할 때)
 TIMEOUT = 120                                                       # 응답 대기 최대 시간(초)
-# 시도 계획: (모델, 시도 전 대기 초). 503(서버 혼잡)·시간 초과는 잠시 뒤 다시 시도하거나 가벼운 모델로 바꾸면 대부분 해결됨
-ATTEMPTS = [(MODEL, 0), (FALLBACK_MODEL, 10), (MODEL, 30)]
+# 시도 계획: (모델, 시도 전 대기 초). 503(서버 혼잡)·시간 초과는 시간을 두고 다시 시도하거나 가벼운 모델로 바꾸면 대부분 해결됨
+# 대기 시간을 점점 늘림 (최대 약 4분)
+ATTEMPTS = [(MODEL, 0), (FALLBACK_MODEL, 20), (MODEL, 60), (FALLBACK_MODEL, 120)]
 ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 BANNED = ["때문", "원인", "탓", "인해", "덕분", "초래", "야기"]      # 인과 단정 표현
 BANNED_TERMS = ["GMV", "gmv", "AOV", "aov"]                          # 한눈에 안 들어오는 약어 (거래액, 객단가로 표기)

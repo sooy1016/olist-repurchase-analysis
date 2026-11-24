@@ -210,7 +210,9 @@ def compute(o, f, month):
         "late_n": cur.groupby("customer_state")["late"].sum(),
         "n_prev": pre.groupby("customer_state").size(),
         "late_n_prev": pre.groupby("customer_state")["late"].sum(),
-    }).fillna(0)
+    })
+    num = ["n", "late_n", "n_prev", "late_n_prev"]
+    st[num] = st[num].fillna(0)
     st["rate"] = st["late_n"] / st["n"].replace(0, np.nan)
     st["rate_prev"] = st["late_n_prev"] / st["n_prev"].replace(0, np.nan)
     st["contrib"] = st["late_n"] / len(cur) - st["late_n_prev"] / len(pre)
