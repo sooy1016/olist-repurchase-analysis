@@ -10,7 +10,7 @@ HTML 대시보드(ECharts)로 만든다.
 
 입력 : outputs/orders_mart.csv     (주문 1건 = 1행, sql/06_dashboard/40_dashboard_exports.sql ①)
        outputs/first_purchase.csv  (첫 구매 고객 1명 = 1행, 같은 파일 ②)
-출력 : dashboard/index.html        (GitHub Pages로 게시)
+출력 : dashboard/index.html        (GitHub Pages로 게시, 화면 구성은 dashboard_page.py)
        dashboard/analysis.json     (지표별 판정 결과 요약 + 해석 문장)
 해석 : python/ai_comment.py        (Gemini로 해석 문장 작성 후 검증, 실패 시 규칙 기반 요약)
 상태 : dashboard/state.json        (현재 기준월)
@@ -40,6 +40,7 @@ import numpy as np
 import pandas as pd
 
 import ai_comment
+from dashboard_page import build_html
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORDERS = os.path.join(ROOT, "outputs", "orders_mart.csv")
@@ -337,77 +338,8 @@ def rule_comment(r):
     return headline, details
 
 
-# ================================================================== HTML
-def fmt_delta(cur, prev, kind):
-    if prev is None or pd.isna(prev) or prev == 0:
-        return '<span class="delta">전월 비교 없음</span>'
-    v = round((cur / prev - 1) * 100, 1) if kind == "pct" else round((cur - prev) * 100, 2)
-    txt = f"{abs(v):.1f}%" if kind == "pct" else f"{abs(v):.2f}%p"
-    arrow = "▲" if v > 0 else "▼" if v < 0 else "–"
-    return f'<span class="delta">{arrow} {txt} 전월 대비</span>'
-
-
-def badge(status):
-    cls = {"정상": "ok", "주의": "warn"}.get(status, "na")
-    icon = {"정상": "●", "주의": "!"}.get(status, "○")
-    return f'<span class="badge {cls}">{icon} {status}</span>'
-
-
-def range_note(x, digits=2):
-    if x.get("lo") is None:
-        return "평소 범위 계산에 필요한 기간 부족"
-    pos = f" · {x['position']}" if x.get("position") not in (None, "범위 안") else ""
-    return f"평소 범위 {x['lo'] * 100:.{digits}f}~{x['hi'] * 100:.{digits}f}%{pos}"
-
-
-def cards_html(r):
-    m, mon = r["metrics"], r["month"]
-    rp, lt, lw = m["repurchase"], m["late"], m["low_review"]
-    return f"""
-<div class="card">
-  <div class="label">첫 구매 고객 재구매율 <span class="hint">{rp['cohort']} 배송 고객</span></div>
-  <div class="row"><div class="value">{rp['value'] * 100:.2f}%</div>{badge(rp['status'])}</div>
-  {fmt_delta(rp['value'], rp['prev'], 'pp')}
-  <div class="note">{rp['n']:,}명 · 남동부 {rp['se'] * 100:.2f}%<br>{range_note(rp)}</div>
-</div>
-<div class="card">
-  <div class="label">예상일 초과 도착 비율</div>
-  <div class="row"><div class="value">{lt['value'] * 100:.1f}%</div>{badge(lt['status'])}</div>
-  {fmt_delta(lt['value'], lt['prev'], 'pp')}
-  <div class="note">{mon} 배송 완료 {lt['n']:,}건<br>{range_note(lt, 1)}</div>
-</div>
-<div class="card">
-  <div class="label">1~2점 리뷰 비율</div>
-  <div class="row"><div class="value">{lw['value'] * 100:.1f}%</div>{badge(lw['status'])}</div>
-  {fmt_delta(lw['value'], lw['prev'], 'pp')}
-  <div class="note">{mon} 배송 완료 주문 중 리뷰 {lw['n']:,}건<br>{range_note(lw, 1)}</div>
-</div>
-<div class="card">
-  <div class="label">주문 수 · 거래액</div>
-  <div class="row"><div class="value">{m['orders']['value']:,}건</div></div>
-  {fmt_delta(m['orders']['value'], m['orders']['prev'], 'pct')}
-  <div class="row sub"><div class="value small">{m['gmv']['value'] / 10000:,.1f}만 헤알</div></div>
-  {fmt_delta(m['gmv']['value'], m['gmv']['prev'], 'pct')}
-  <div class="note">{mon} 주문 기준 · 거래액은 배송비 제외</div>
-</div>"""
-
-
-def states_table(r):
-    st = r["states"]
-    if not len(st):
-        return "<p class='note'>비교할 주가 없음</p>"
-    rows = "".join(
-        f"<tr><td>{s}</td><td>{x['region']}</td><td class='num'>{int(x['n']):,}</td>"
-        f"<td class='num'>{'' if pd.isna(x['rate_prev']) else f'{x.rate_prev * 100:.1f}%'}</td>"
-        f"<td class='num'><b>{x['rate'] * 100:.1f}%</b></td>"
-        f"<td class='num'>{x['contrib'] * 100:+.2f}%p</td></tr>"
-        for s, x in st.iterrows())
-    return f"""<table>
-<thead><tr><th>주</th><th>권역</th><th class='num'>배송 완료</th><th class='num'>전월</th>
-<th class='num'>이번 달</th><th class='num'>전체 변화 기여</th></tr></thead><tbody>{rows}</tbody></table>
-<p class='note'>전체 예상일 초과 도착 비율 변화 {r['total_late_change'] * 100:+.2f}%p를 주별로 나눈 값 · 배송 완료 50건 이상인 주만 표시</p>"""
-
-
+# ================================================================== 차트 데이터
+# 화면 구성은 python/dashboard_page.py
 def chart_data(r):
     lab = lambda idx: [f"{p.year}.{p.month:02d}" for p in idx]
     nz = lambda s, d=3: [None if pd.isna(v) else round(float(v) * 100, d) for v in s]
@@ -434,242 +366,6 @@ def chart_data(r):
                      gmv=[round(float(v) / 10000, 1) for v in r["monthly"]["gmv"]]),
     )
 
-
-def build_html(r, headline, details, comment_source=""):
-    built = datetime.now().strftime("%Y-%m-%d %H:%M")
-    data = json.dumps(chart_data(r), ensure_ascii=False)
-    detail_html = "".join(f"<li>{d}</li>" for d in details)
-    return f"""<!DOCTYPE html>
-<html lang="ko"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Olist 재구매 모니터링 대시보드</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
-<script src="{ECHARTS}"></script>
-<style>
-  :root {{
-    --bg:#f5f5f3; --surface:#ffffff; --line:#e6e5e0;
-    --ink:#0b0b0b; --ink2:#52514e; --ink3:#8a8984;
-    --blue:#2a78d6; --orange:#eb6834;
-    --ok-bg:#eef3ee; --ok:#2f6b3a; --warn-bg:#fdecea; --warn:#b42318; --good-bg:#e8f0fb; --good:#1f5fae;
-  }}
-  * {{ box-sizing:border-box; }}
-  body {{ margin:0; background:var(--bg); color:var(--ink);
-         font-family:Pretendard,'Malgun Gothic','Apple SD Gothic Neo',sans-serif; }}
-  .wrap {{ max-width:1180px; margin:0 auto; padding:32px 20px 56px; }}
-  header {{ display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; }}
-  h1 {{ font-size:24px; margin:0; letter-spacing:-0.02em; }}
-  .meta {{ color:var(--ink2); font-size:13px; line-height:1.6; text-align:right; }}
-  .headline {{ margin:20px 0 16px; padding:18px 22px; background:var(--surface); border:1px solid var(--line);
-               border-left:4px solid var(--blue); border-radius:12px; font-size:17px; font-weight:600; line-height:1.6; }}
-  .headline small {{ display:block; font-size:12px; font-weight:400; color:var(--ink3); margin-top:4px; }}
-  .cards {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }}
-  .card {{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px; }}
-  .label {{ font-size:13px; color:var(--ink2); }}
-  .hint {{ color:var(--ink3); font-size:12px; }}
-  .row {{ display:flex; align-items:center; gap:10px; margin:8px 0 4px; }}
-  .row.sub {{ margin-top:10px; }}
-  .value {{ font-size:28px; font-weight:700; letter-spacing:-0.02em; }}
-  .value.small {{ font-size:20px; }}
-  .badge {{ font-size:12px; font-weight:600; padding:3px 8px; border-radius:999px; white-space:nowrap; }}
-  .badge.ok {{ background:var(--ok-bg); color:var(--ok); }}
-  .badge.warn {{ background:var(--warn-bg); color:var(--warn); }}
-  .badge.good {{ background:var(--good-bg); color:var(--good); }}
-  .badge.na {{ background:#f0f0ee; color:var(--ink3); }}
-  .delta {{ font-size:13px; color:var(--ink2); }}
-  .note {{ font-size:11.5px; color:var(--ink3); margin-top:8px; line-height:1.55; }}
-  h2 {{ font-size:17px; margin:36px 0 12px; letter-spacing:-0.01em; }}
-  h2 span {{ font-size:12.5px; font-weight:400; color:var(--ink3); margin-left:8px; }}
-  .panel {{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 18px 10px; min-width:0; }}
-  .panel h3 {{ font-size:14.5px; margin:0 0 2px; }}
-  .panel .desc {{ font-size:12px; color:var(--ink3); margin-bottom:4px; }}
-  .chart {{ width:100%; height:300px; }}
-  .chart.tall {{ height:330px; }}
-  .grid2 {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }}
-  .stack {{ display:grid; gap:12px; }}
-  .detail {{ margin:0; padding-left:18px; line-height:1.8; font-size:14px; }}
-  .src {{ font-size:11.5px; color:var(--ink3); margin-top:8px; }}
-  table {{ width:100%; border-collapse:collapse; font-size:13.5px; margin-top:8px; }}
-  th {{ text-align:left; font-weight:600; color:var(--ink2); border-bottom:1px solid var(--line); padding:8px 6px; font-size:12.5px; }}
-  td {{ border-bottom:1px solid #f0efeb; padding:9px 6px; }}
-  .num {{ text-align:right; font-variant-numeric:tabular-nums; }}
-  footer {{ color:var(--ink3); font-size:12px; line-height:1.7; margin-top:32px; }}
-  footer a {{ color:var(--ink2); }}
-  @media (max-width:900px) {{ .cards {{ grid-template-columns:1fr 1fr; }} .grid2 {{ grid-template-columns:1fr; }} .meta {{ text-align:left; }} }}
-</style></head>
-<body><div class="wrap">
-
-<header>
-  <h1>Olist 재구매 모니터링</h1>
-  <div class="meta">기준월 <b>{r['month']}</b> · 데이터 기준일 {r['cutoff']:%Y-%m-%d}<br>자동 생성 {built}</div>
-</header>
-
-<div class="headline">{headline}{f"<small>{comment_source}</small>" if comment_source else ""}</div>
-<section class="cards">{cards_html(r)}</section>
-
-<div class="panel" style="margin-top:12px">
-  <h3>첫 구매 고객 재구매율 추이</h3>
-  <div class="desc">배송 완료월별 · 배송 후 30일 이내 재구매 · 띠는 전국 기준 평소 범위</div>
-  <div id="c-rep" class="chart tall"></div>
-</div>
-
-<h2>이번 달 변화 상세<span>무엇이 변했고, 어디서 변했나</span></h2>
-<div class="grid2">
-  <div class="panel"><h3>해석</h3><ul class="detail">{detail_html}</ul>{f'<div class="src">{comment_source}</div>' if comment_source else ""}</div>
-  <div class="panel"><h3>예상일 초과 도착 비율 변화 기여 Top 5 (주)</h3>{states_table(r)}</div>
-</div>
-
-<h2>배송 경험 추이<span>배송 완료월별 · 띠는 평소 범위</span></h2>
-<div class="grid2">
-  <div class="panel"><h3>예상일 초과 도착 비율</h3><div id="c-late" class="chart"></div></div>
-  <div class="panel"><h3>1~2점 리뷰 비율</h3><div id="c-low" class="chart"></div></div>
-</div>
-
-<h2>권역 비교<span>최근 6개월과 그 전 기간 비교</span></h2>
-<div class="panel"><h3>권역별 첫 구매 고객 재구매율</h3>
-  <div class="desc">배송 완료월 기준 · 한 달씩 보면 권역별 고객 수가 적어 6개월씩 묶음</div>
-  <div id="c-region" class="chart"></div></div>
-
-<h2>참고<span>이번 달과 평소 비교</span></h2>
-<div class="stack">
-  <div class="panel"><h3>예상 도착일 대비 도착 시점별 1~2점 리뷰 비율</h3>
-    <div class="desc">배송 완료월 기준 · 늦게 도착한 주문에 대한 불만이 평소보다 커졌는지 확인</div>
-    <div id="c-band" class="chart"></div></div>
-  <div class="panel"><h3>주문 이후 퍼널</h3>
-    <div class="desc">전월 주문 기준 · 주문 대비 비율 · 이번 달 주문은 아직 배송 중인 주문이 많아 한 달 전 주문으로 비교</div>
-    <div id="c-funnel" class="chart" style="height:280px"></div></div>
-  <div class="grid2">
-    <div class="panel"><h3>월별 주문 수</h3><div id="c-orders" class="chart"></div></div>
-    <div class="panel"><h3>월별 거래액 (만 헤알)</h3><div id="c-gmv" class="chart"></div></div>
-  </div>
-</div>
-
-<footer>
-  <b>지표 정의</b> · 첫 구매 고객 재구매율: 첫 구매 배송 완료 후 30일 이내에 처음 다시 구매한 고객 비율(첫 구매와 같은 날 주문 제외),
-  재구매 여부는 배송 후 30일이 지나야 확정되므로 확정된 배송 달까지만 표시 · 예상일 초과 도착 비율: 해당 월 배송 완료 주문 중 예상 도착일보다 늦게 도착한 비율 ·
-  1~2점 리뷰 비율: 해당 월 배송 완료 주문 중 리뷰가 있는 주문에서 1~2점(주문별 평균) 비율 ·
-  거래액: 상품 가격 합계(배송비 제외, 취소·상품 없음 주문 제외)<br>
-  <b>평소 범위</b> · 최근 6개월 평균 ± 2 × 표준편차. 이 범위를 나쁜 쪽으로 벗어나면 주의<br>
-  <b>데이터</b> · Brazilian E-Commerce Public Dataset by Olist (Kaggle). 2017.01~2018.08 과거 데이터를 기준월 단위로 공급해 운영 환경을 시뮬레이션.
-  배송 완료는 도착일이 기준일 이전인지로 판단. 리뷰 작성일 정보가 없어 기준일 이후 작성된 리뷰도 포함될 수 있음<br>
-  분석 상세 · <a href="https://github.com/sooy1016/olist-repurchase-analysis">github.com/sooy1016/olist-repurchase-analysis</a>
-</footer>
-</div>
-
-<script>
-const D = {data};
-const C = {{ blue:'#2a78d6', orange:'#eb6834', gray:'#c9c8c1', band:'rgba(42,120,214,0.12)',
-            ink:'#0b0b0b', ink2:'#52514e', ink3:'#8a8984', grid:'#eeede9' }};
-const FONT = "Pretendard, 'Malgun Gothic', sans-serif";
-const charts = [];
-function mk(id, opt) {{
-  const c = echarts.init(document.getElementById(id), null, {{ renderer:'svg' }});
-  c.setOption(Object.assign({{
-    textStyle:{{ fontFamily:FONT, color:C.ink2 }}, animationDuration:600,
-    grid:{{ left:8, right:16, top:36, bottom:8, containLabel:true }},
-    tooltip:{{ trigger:'axis', backgroundColor:'#fff', borderColor:'#e6e5e0', textStyle:{{ color:C.ink, fontSize:12 }},
-              axisPointer:{{ type:'line', lineStyle:{{ color:'#bbb' }} }} }},
-  }}, opt));
-  charts.push(c);
-}}
-const xCat = (data, extra={{}}) => Object.assign({{ type:'category', data, boundaryGap:true,
-  axisLine:{{ show:false }}, axisTick:{{ show:false }}, axisLabel:{{ color:C.ink3, fontSize:11 }} }}, extra);
-const yVal = (fmt) => ({{ type:'value', splitLine:{{ lineStyle:{{ color:C.grid }} }},
-  axisLabel:{{ color:C.ink3, fontSize:11, formatter:fmt }} }});
-const lineS = (name, data, color) => ({{ name, type:'line', data, symbol:'circle', symbolSize:7, connectNulls:false,
-  lineStyle:{{ width:2.2, color }}, itemStyle:{{ color, borderColor:'#fff', borderWidth:2 }} }});
-const bandS = (lo, hi) => ([
-  {{ name:'_lo', type:'line', data:lo, stack:'band', symbol:'none', lineStyle:{{ opacity:0 }}, tooltip:{{ show:false }}, silent:true }},
-  {{ name:'평소 범위', type:'line', data:hi.map((h,i)=> h==null||lo[i]==null ? null : +(h-lo[i]).toFixed(4)), stack:'band',
-     symbol:'none', lineStyle:{{ opacity:0 }}, itemStyle:{{ color:'rgba(42,120,214,0.25)' }}, areaStyle:{{ color:C.band }}, tooltip:{{ show:false }}, silent:true }}
-]);
-const pctTip = (digits, extra) => (ps) => {{
-  const rows = ps.filter(p => !p.seriesName.startsWith('_') && p.seriesName!=='평소 범위' && p.value!=null)
-    .map(p => `${{p.marker}}${{p.seriesName}} <b>${{p.value.toFixed(digits)}}%</b>`);
-  const i = ps[0].dataIndex; const ex = extra ? extra(i) : '';
-  return `<b>${{ps[0].axisValue}}</b><br>` + rows.join('<br>') + ex;
-}};
-
-// 재구매율 추이
-mk('c-rep', {{
-  legend:{{ data:['전국','남동부','평소 범위'], right:0, top:0, icon:'roundRect', itemWidth:14, itemHeight:4,
-           textStyle:{{ color:C.ink2, fontSize:12 }} }},
-  xAxis:xCat(D.rep.x), yAxis:yVal('{{value}}%'),
-  tooltip:{{ trigger:'axis', formatter:pctTip(2, i => (D.rep.lo[i]!=null ? `<br><span style="color:#8a8984">평소 범위 ${{D.rep.lo[i].toFixed(2)}}~${{D.rep.hi[i].toFixed(2)}}%</span>` : '')) }},
-  series:[...bandS(D.rep.lo, D.rep.hi), lineS('전국', D.rep.all, C.blue), lineS('남동부', D.rep.se, C.orange)]
-}});
-
-// 배송 경험
-for (const [id, key, name] of [['c-late','late','예상일 초과 도착 비율'], ['c-low','low','1~2점 리뷰 비율']]) {{
-  const s = D[key];
-  mk(id, {{
-    xAxis:xCat(s.x), yAxis:yVal('{{value}}%'),
-    tooltip:{{ trigger:'axis', formatter:pctTip(1, i => (s.lo[i]!=null ? `<br><span style="color:#8a8984">평소 범위 ${{s.lo[i].toFixed(1)}}~${{s.hi[i].toFixed(1)}}%</span>` : '')) }},
-    series:[...bandS(s.lo, s.hi), lineS(name, s.y, C.blue)]
-  }});
-}}
-
-// 묶음 막대 공통 (이번 vs 평소)
-const pair = (id, x, cur, prev, curName, prevName, digits, curN, prevN, nUnit, labelColor) => mk(id, {{
-  legend:{{ data:[curName, prevName], right:0, top:0, icon:'roundRect', itemWidth:12, itemHeight:8,
-           textStyle:{{ color:C.ink2, fontSize:12 }} }},
-  grid:{{ left:8, right:16, top:40, bottom:8, containLabel:true }},
-  xAxis:xCat(x, {{ axisLabel:{{ color:C.ink2, fontSize:11.5 }} }}), yAxis:yVal('{{value}}%'),
-  tooltip:{{ trigger:'axis', axisPointer:{{ type:'shadow' }}, formatter:ps => {{
-    const i = ps[0].dataIndex;
-    return `<b>${{ps[0].name}}</b><br>` + ps.filter(p=>p.value!=null).map(p => {{
-      const n = p.seriesIndex===0 ? curN[i] : prevN[i];
-      return `${{p.marker}}${{p.seriesName}} <b>${{p.value.toFixed(digits)}}%</b> <span style="color:#8a8984">(${{n.toLocaleString()}}${{nUnit}})</span>`;
-    }}).join('<br>');
-  }} }},
-  series:[
-    {{ name:curName, type:'bar', data:cur, barMaxWidth:30, barGap:'15%', itemStyle:{{ color:C.blue, borderRadius:[4,4,0,0] }},
-       label:{{ show:true, position:'top', color:C.ink, fontSize:11.5, formatter:p => p.value==null ? '' : p.value.toFixed(digits)+'%' }} }},
-    {{ name:prevName, type:'bar', data:prev, barMaxWidth:30, itemStyle:{{ color:C.gray, borderRadius:[4,4,0,0] }} }}
-  ]
-}});
-
-// 권역별 재구매율: 최근 6개월 vs 그 전 6개월
-pair('c-region', D.region.x, D.region.recent, D.region.before,
-     D.region.recent_label, D.region.before_label, 2, D.region.recent_n, D.region.before_n, '명');
-
-// 예상 도착일 대비 1~2점 리뷰 비율: 이번 달 vs 직전 12개월
-pair('c-band', D.band.x, D.band.cur, D.band.prev,
-     `이번 달 (${{D.band.cur_label}})`, D.band.prev_label, 1, D.band.cur_n, D.band.prev_n, '건');
-
-// 퍼널: 전월 주문 vs 직전 3개월 평균 (주문 대비 비율)
-mk('c-funnel', {{
-  legend:{{ data:[`${{D.funnel.cur_label}} 주문`, `직전 3개월 평균 (${{D.funnel.base_label}})`], right:0, top:0, icon:'roundRect',
-           itemWidth:12, itemHeight:8, textStyle:{{ color:C.ink2, fontSize:12 }} }},
-  grid:{{ left:8, right:70, top:36, bottom:8, containLabel:true }},
-  xAxis:{{ type:'value', show:false, max:100 }},
-  yAxis:{{ type:'category', data:D.funnel.x, inverse:true, axisLine:{{ show:false }}, axisTick:{{ show:false }},
-          axisLabel:{{ color:C.ink2, fontSize:12.5 }} }},
-  tooltip:{{ trigger:'axis', axisPointer:{{ type:'shadow' }}, formatter:ps => {{
-    const i = ps[0].dataIndex;
-    return `<b>${{ps[0].name}}</b><br>` + ps.filter(p=>p.value!=null).map(p =>
-      `${{p.marker}}${{p.seriesName}} <b>${{p.value.toFixed(1)}}%</b>` + (p.seriesIndex===0 ? ` <span style="color:#8a8984">(${{D.funnel.cur_n[i].toLocaleString()}}건)</span>` : '')).join('<br>');
-  }} }},
-  series:[
-    {{ name:`${{D.funnel.cur_label}} 주문`, type:'bar', data:D.funnel.cur, barWidth:16, itemStyle:{{ color:C.blue, borderRadius:[0,4,4,0] }},
-       label:{{ show:true, position:'right', color:C.ink, fontSize:12, formatter:p => p.value.toFixed(1)+'%' }} }},
-    {{ name:`직전 3개월 평균 (${{D.funnel.base_label}})`, type:'bar', data:D.funnel.base, barWidth:16, itemStyle:{{ color:C.gray, borderRadius:[0,4,4,0] }},
-       label:{{ show:true, position:'right', color:C.ink3, fontSize:11.5, formatter:p => p.value==null ? '' : p.value.toFixed(1)+'%' }} }}
-  ]
-}});
-
-// 월별 주문 수·거래액 (기준월 강조)
-for (const [id, key, unit] of [['c-orders','orders','건'], ['c-gmv','gmv','만 헤알']]) {{
-  const ys = D.monthly[key], last = ys.length - 1;
-  mk(id, {{
-    xAxis:xCat(D.monthly.x), yAxis:yVal(v => v.toLocaleString()),
-    tooltip:{{ trigger:'axis', axisPointer:{{ type:'shadow' }}, formatter:ps => `<b>${{ps[0].name}}</b><br>${{ps[0].value.toLocaleString()}}${{unit}}` }},
-    series:[{{ type:'bar', data:ys.map((v,i)=>({{ value:v, itemStyle:{{ color: i===last ? C.blue : C.gray }} }})),
-              barMaxWidth:22, itemStyle:{{ borderRadius:[3,3,0,0] }} }}]
-  }});
-}}
-window.addEventListener('resize', () => charts.forEach(c => c.resize()));
-</script>
-</body></html>"""
 
 
 # ================================================================== 검증
@@ -724,7 +420,7 @@ def main():
 
     os.makedirs(OUT_DIR, exist_ok=True)
     with open(os.path.join(OUT_DIR, "index.html"), "w", encoding="utf-8") as fp:
-        fp.write(build_html(r, headline, details, source))
+        fp.write(build_html(r, headline, details, source, chart_data(r), ECHARTS))
     with open(os.path.join(OUT_DIR, "analysis.json"), "w", encoding="utf-8") as fp:
         json.dump(payload, fp, ensure_ascii=False, indent=2)
     with open(STATE, "w", encoding="utf-8") as fp:
